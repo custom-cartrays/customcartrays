@@ -3,17 +3,17 @@ export const TRAY = Object.freeze({
   widthIn: 17,
   heightIn: 11.5,
   designWidthIn: 16.5,
-  designHeightIn: 7.625,
-  topMarginIn: 1,
+  designHeightIn: 11,
+  topMarginIn: 0.5,
   bottomMarginIn: 0,
-  sideMarginIn: 0,
+  sideMarginIn: 0.25,
 });
 
 export const PRINT = Object.freeze({
   targetDpi: 300,
-  // Current legacy export size; keep explicit until production output is signed off.
-  legacyWidthPx: 4950,
-  legacyHeightPx: 3300,
+  // 16.5 x 11 in at 300 DPI.
+  widthPx: 4950,
+  heightPx: 3300,
 });
 
 export function containSize(sourceWidthPx, sourceHeightPx, boxWidth, boxHeight, scalePercent = 100) {
@@ -24,7 +24,6 @@ export function containSize(sourceWidthPx, sourceHeightPx, boxWidth, boxHeight, 
 
 export function effectiveDpi(sourceWidthPx, sourceHeightPx, scalePercent = 100) {
   if (!sourceWidthPx || !sourceHeightPx || !scalePercent) return null;
-  // At 100%, the full original is contained inside the recommended physical design area.
   const fit = Math.min(TRAY.designWidthIn / sourceWidthPx, TRAY.designHeightIn / sourceHeightPx);
   const placedWidthIn = sourceWidthPx * fit * (scalePercent / 100);
   const placedHeightIn = sourceHeightPx * fit * (scalePercent / 100);
