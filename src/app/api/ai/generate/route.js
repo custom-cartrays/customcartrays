@@ -20,11 +20,6 @@ export async function POST(request) {
     });
 
     if (!res.ok) {
-      const detail = await res.text().catch(() => '');
-      console.error('FAL generate request failed', {
-        status: res.status,
-        body: detail.slice(0, 1000),
-      });
       return NextResponse.json({ error: 'AI generation failed' }, { status: 500 });
     }
 
