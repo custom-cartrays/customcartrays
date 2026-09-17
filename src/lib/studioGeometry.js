@@ -1,12 +1,22 @@
-// Studio V2 geometry helpers. UI geometry must never redefine the manufacturing CAD.
+// Studio V2 geometry helpers.
+// These 0.25-inch margins center the 16.5 x 11 artwork area inside the
+// 17 x 11.5 UI reference only. They do not redefine the manufacturing CAD;
+// the approved CAD/mask remains the authority for the physical cut path.
 export const TRAY = Object.freeze({
   widthIn: 17,
   heightIn: 11.5,
   designWidthIn: 16.5,
   designHeightIn: 11,
-  topMarginIn: 0.5,
-  bottomMarginIn: 0,
+  topMarginIn: 0.25,
+  bottomMarginIn: 0.25,
   sideMarginIn: 0.25,
+});
+
+export const DESIGN_AREA_UI = Object.freeze({
+  leftPct: (TRAY.sideMarginIn / TRAY.widthIn) * 100,
+  topPct: (TRAY.topMarginIn / TRAY.heightIn) * 100,
+  widthPct: (TRAY.designWidthIn / TRAY.widthIn) * 100,
+  heightPct: (TRAY.designHeightIn / TRAY.heightIn) * 100,
 });
 
 export const PRINT = Object.freeze({
