@@ -19,7 +19,7 @@ export async function POST(request) {
     const data = await res.json();
     const imageUrl = data.images?.[0]?.url;
     if (!imageUrl) return NextResponse.json({ error: 'No image returned' }, { status: 502 });
-    return NextResponse.json({ imageUrl });
+    return NextResponse.json({ imageUrl, effectivePrompt: basePrompt + userInstruction });
   } catch (e) {
     console.error('AI expand exception', e);
     return NextResponse.json({ error: 'AI expand failed' }, { status: 500 });
