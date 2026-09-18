@@ -24,7 +24,6 @@ const initialEditorState = () => ({
   textLayers: [],
 });
 const TOOLS = [
-  ["upload", "Upload", "▣"],
   ["ai", "AI", "✦"],
   ["text", "Add Text", "T"],
   ["templates", "Templates", "▤"],
