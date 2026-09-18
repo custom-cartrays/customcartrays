@@ -99,10 +99,12 @@ export default function CarTrayStudio() {
     [expandPrompt, setExpandPrompt] = useState(""),
     [appliedExpandInstruction, setAppliedExpandInstruction] = useState(""),
     [appliedExpandPrompt, setAppliedExpandPrompt] = useState(""),
-    [printPreview, setPrintPreview] = useState("");
+    [printPreview, setPrintPreview] = useState(""),
+    [reviewPreview, setReviewPreview] = useState("");
   const [loading, setLoading] = useState(false),
     [expanding, setExpanding] = useState(false),
     [saving, setSaving] = useState(false),
+    [reviewing, setReviewing] = useState(false),
     [renderingPrint, setRenderingPrint] = useState(false),
     [productionReady, setProductionReady] = useState(false),
     [error, setError] = useState("");
@@ -139,6 +141,7 @@ export default function CarTrayStudio() {
     textLayersRef.current = state.textLayers || [];
     setTextLayers(textLayersRef.current);
     setPrintPreview("");
+    setReviewPreview("");
   };
   const currentSnapshot = (overrides = {}) => ({
     transform: overrides.transform || transformRef.current,
@@ -160,11 +163,13 @@ export default function CarTrayStudio() {
       transformRef.current = next;
       setTransform(next);
       setPrintPreview("");
+      setReviewPreview("");
     },
     previewTextLayers = (next) => {
       textLayersRef.current = next;
       setTextLayers(next);
       setPrintPreview("");
+      setReviewPreview("");
     },
     commitTransform = (next) =>
       commitSnapshot(currentSnapshot({ transform: next }));
@@ -183,6 +188,27 @@ export default function CarTrayStudio() {
       }
     },
     resetTransform = () => commitTransform({ ...initialTransform });
+  const editPhotoAgain = () => {
+    if (!flattenedArtwork || !originalImage) return;
+    let prior = null;
+    for (let i = historyIndex; i >= 0; i -= 1) {
+      if (!history[i]?.flattenedArtwork) {
+        prior = history[i];
+        break;
+      }
+    }
+    const restored = currentSnapshot({
+      transform: prior?.transform || { ...initialTransform },
+      flattenedArtwork: "",
+      appliedExpandInstruction: "",
+      appliedExpandPrompt: "",
+      textLayers: textLayersRef.current,
+    });
+    commitSnapshot(restored);
+    setView("editor");
+    setActiveTool("upload");
+    setError("");
+  };
   const setNewImage = (src, remember = true) => {
     setImage(src);
     if (remember) setOriginalImage(src);
@@ -298,8 +324,22 @@ export default function CarTrayStudio() {
     ctx.fillStyle = mx.fillStyle = "#fff";
     ctx.fillRect(0, 0, W, H);
     mx.fillRect(0, 0, W, H);
-    const img = await loadImage(originalImage || image),
-      { w, h } = drawPlaced(ctx, img, W, H);
+    const img = await loadImage(originalImage || image);
+    const coverScale = Math.max(W / img.naturalWidth, H / img.naturalHeight),
+      coverW = img.naturalWidth * coverScale,
+      coverH = img.naturalHeight * coverScale;
+    ctx.save();
+    ctx.filter = "blur(34px)";
+    ctx.globalAlpha = 0.34;
+    ctx.drawImage(
+      img,
+      (W - coverW) / 2,
+      (H - coverH) / 2,
+      coverW,
+      coverH,
+    );
+    ctx.restore();
+    const { w, h } = drawPlaced(ctx, img, W, H);
     mx.save();
     mx.translate((W * x) / 100, (H * y) / 100);
     mx.rotate((rot * Math.PI) / 180);
@@ -319,11 +359,14 @@ export default function CarTrayStudio() {
       const inputs = await composeExpandInputs(),
         userDirection = expandPrompt.trim(),
         expansionPrompt = [
-          "Outpaint the masked empty area only and continue the existing image naturally as one seamless scene.",
-          "Match the original image perspective, camera angle, lighting, colors, texture, scale, depth and visual style.",
-          "Do not duplicate, tile, mirror, repeat, collage, zoom, or recreate the protected original image.",
-          "Do not add frames, borders, UI, screenshots, posters, grids, extra copies of people, extra copies of objects, logos, captions, or text.",
-          "Keep the protected original image visually unchanged and use it only as context for the missing surrounding area.",
+          "Outpaint only the masked missing area around the original image and make one seamless completed scene.",
+          "Continue the visible background naturally from the nearest image edges into the missing top, bottom, left, or right space.",
+          "Use the original image as the single authoritative center reference.",
+          "The original subject, people, vehicle, product, logo, lettering, poster, artwork, or other foreground content must appear exactly once.",
+          "Never copy, tile, mirror, repeat, collage, stack, zoom, or recreate the whole original image in the expanded area.",
+          "Do not invent frames, borders, UI, screenshots, grids, repeated logos, repeated text, or duplicate people/objects.",
+          "Match perspective, horizon, lighting, colors, texture, depth, and photographic style at the boundary so the transition is invisible.",
+          "Preserve the unmasked original image and extend only what logically continues beyond its edges.",
           userDirection ? `User direction: ${userDirection}` : "",
         ]
           .filter(Boolean)
@@ -388,6 +431,22 @@ export default function CarTrayStudio() {
       setView("editor");
     } finally {
       setRenderingPrint(false);
+    }
+  };
+  const goToReview = async () => {
+    if (!image || expanding || reviewing || !productionReady) return;
+    setReviewing(true);
+    setError("");
+    try {
+      const preview = await renderProduction(1485, 990, 0.9);
+      setReviewPreview(preview);
+      setView("review");
+      setSelectedTextId(null);
+    } catch (e) {
+      setError(e.message);
+      setView("editor");
+    } finally {
+      setReviewing(false);
     }
   };
   const add = async () => {
@@ -562,13 +621,13 @@ export default function CarTrayStudio() {
           </button>
 
           <div className="hidden md:flex flex-1 items-center justify-center gap-6 text-sm">
-            <div className="flex items-center gap-2 font-bold">
-              <span className="grid h-8 w-8 place-items-center rounded-full bg-[#171717] text-white ring-4 ring-[#d9a44b]/15">1</span>
+            <div className={`flex items-center gap-2 ${view === "review" ? "text-black/55" : "font-bold"}`}>
+              <span className={`grid h-8 w-8 place-items-center rounded-full ${view === "review" ? "bg-[#d9a44b] text-[#171717]" : "bg-[#171717] text-white ring-4 ring-[#d9a44b]/15"}`}>1</span>
               <span>Design Your Tray</span>
             </div>
             <div className="h-px w-10 bg-black/10" />
-            <div className="flex items-center gap-2 text-black/40">
-              <span className="grid h-8 w-8 place-items-center rounded-full bg-black/10">2</span>
+            <div className={`flex items-center gap-2 ${view === "review" ? "font-bold text-[#171717]" : "text-black/40"}`}>
+              <span className={`grid h-8 w-8 place-items-center rounded-full ${view === "review" ? "bg-[#171717] text-white ring-4 ring-[#d9a44b]/15" : "bg-black/10"}`}>2</span>
               <span>Review</span>
             </div>
             <div className="h-px w-10 bg-black/10" />
@@ -579,17 +638,23 @@ export default function CarTrayStudio() {
           </div>
 
           <button
-            onClick={add}
-            disabled={!image || saving}
+            onClick={view === "review" ? add : goToReview}
+            disabled={!image || saving || reviewing || expanding || !productionReady}
             className="ml-auto rounded-2xl bg-[#171717] px-6 py-3 font-bold text-white shadow-[0_8px_22px_rgba(0,0,0,.18)] transition hover:-translate-y-0.5 hover:bg-black hover:shadow-[0_10px_26px_rgba(0,0,0,.22)] disabled:translate-y-0 disabled:cursor-not-allowed disabled:bg-black/25 disabled:shadow-none"
           >
-            {saving ? "Saving…" : "Continue →"}
+            {view === "review"
+              ? saving
+                ? "Adding…"
+                : "Add to Cart →"
+              : reviewing
+                ? "Preparing Review…"
+                : "Review →"}
           </button>
         </div>
       </header>
 
       <main className="mx-auto grid min-h-[calc(100vh-76px)] w-full max-w-[1540px] gap-0 px-0 xl:grid-cols-[100px_minmax(760px,980px)_320px] xl:justify-center xl:gap-4 xl:px-4">
-        <aside className="order-2 flex items-center gap-2 overflow-x-auto border-t border-black/10 bg-white/90 px-2 py-3 shadow-sm xl:order-none xl:my-5 xl:h-fit xl:flex-col xl:rounded-[26px] xl:border xl:border-[#d9c9ad]/70 xl:bg-[rgba(255,253,249,.92)] xl:px-2.5 xl:py-3.5 xl:shadow-[0_14px_35px_rgba(45,36,23,.08)] xl:backdrop-blur">
+        <aside className={`order-2 flex items-center gap-2 overflow-x-auto border-t border-black/10 bg-white/90 px-2 py-3 shadow-sm xl:order-none xl:my-5 xl:h-fit xl:flex-col xl:rounded-[26px] xl:border xl:border-[#d9c9ad]/70 xl:bg-[rgba(255,253,249,.92)] xl:px-2.5 xl:py-3.5 xl:shadow-[0_14px_35px_rgba(45,36,23,.08)] xl:backdrop-blur ${view === "review" ? "pointer-events-none opacity-35" : ""}`}>
           <button
             onClick={() => setActiveTool("ai")}
             className={`min-w-[78px] rounded-2xl px-2 py-3 text-xs flex flex-col items-center gap-1.5 transition ${activeTool === "ai" ? "bg-[#171717] text-white font-bold shadow-[0_8px_18px_rgba(0,0,0,.16)]" : "hover:bg-[#f3eadc]"}`}
@@ -644,10 +709,10 @@ export default function CarTrayStudio() {
         <section className="order-1 min-w-0 flex flex-col bg-transparent xl:order-none">
           <div className="flex items-center justify-between px-4 pt-5 text-[11px] uppercase tracking-[0.16em] text-black/40 md:px-3">
             <span>
-              {view === "editor" ? "Editor View" : "Print File"}
+              {view === "review" ? "Review" : view === "editor" ? "Editor View" : "Print File"}
             </span>
             <b className="normal-case tracking-normal text-black/60">
-              {view === "print" ? "16.5″ × 11″ artwork" : "17″ × 11.5″ tray"}
+              {view === "print" ? "16.5″ × 11″ artwork" : view === "review" ? "Review before adding to cart" : "17″ × 11.5″ tray"}
             </b>
           </div>
 
@@ -689,7 +754,14 @@ export default function CarTrayStudio() {
                   </div>
                 )}
 
-                {flattenedArtwork ? (
+                {view === "review" && reviewPreview ? (
+                  <img
+                    src={reviewPreview}
+                    alt="Review artwork"
+                    draggable={false}
+                    className="absolute inset-0 h-full w-full object-fill pointer-events-none"
+                  />
+                ) : flattenedArtwork ? (
                   <img
                     src={flattenedArtwork}
                     alt="Flattened AI artwork"
@@ -716,14 +788,16 @@ export default function CarTrayStudio() {
                   </div>
                 )}
 
-                <TextLayersOverlay
-                  layers={textLayers}
-                  onPointerDown={textPointerDown}
-                  selectedId={selectedTextId}
-                />
+                {view !== "review" && (
+                  <TextLayersOverlay
+                    layers={textLayers}
+                    onPointerDown={textPointerDown}
+                    selectedId={selectedTextId}
+                  />
+                )}
               </div>
 
-              {view === "editor" && <TrayReference />}
+              {(view === "editor" || view === "review") && <TrayReference />}
 
               {view === "print" && (
                 <div className="absolute inset-0 z-40 bg-white flex items-center justify-center">
@@ -745,10 +819,37 @@ export default function CarTrayStudio() {
           </div>
 
           <div className="mx-2 mb-4 flex items-center gap-2 overflow-x-auto rounded-[22px] border border-[#d8cbb7]/70 bg-[rgba(255,253,249,.90)] px-3 py-3 shadow-[0_10px_28px_rgba(45,36,23,.06)] backdrop-blur md:px-4">
-            {[
-              ["editor", "Editor", "Edit positioning and text"],
-              ["print", "Print File", "4950 × 3300 · artwork only"],
-            ].map(([id, label, sub]) => (
+            {view === "review" ? (
+              <>
+                <button
+                  onClick={() => {
+                    setView("editor");
+                    setActiveTool(flattenedArtwork ? "ai" : "upload");
+                  }}
+                  className="min-w-[150px] rounded-2xl border border-black/10 bg-white px-4 py-3 text-left font-bold hover:bg-[#faf3e8]"
+                >
+                  ← Back to Edit
+                  <span className="mt-0.5 block text-[10px] font-normal text-black/45">
+                    Change the artwork before ordering
+                  </span>
+                </button>
+                <button
+                  onClick={add}
+                  disabled={saving}
+                  className="min-w-[170px] rounded-2xl bg-[#171717] px-4 py-3 text-left font-bold text-white shadow-sm disabled:opacity-40"
+                >
+                  {saving ? "Adding…" : "Add to Cart →"}
+                  <span className="mt-0.5 block text-[10px] font-normal text-white/60">
+                    Save this design and continue
+                  </span>
+                </button>
+              </>
+            ) : (
+              <>
+                {[
+                  ["editor", "Editor", "Edit positioning and text"],
+                  ["print", "Print File", "4950 × 3300 · artwork only"],
+                ].map(([id, label, sub]) => (
               <button
                 key={id}
                 onClick={() => (id === "print" ? showPrintFile() : setView(id))}
@@ -763,7 +864,9 @@ export default function CarTrayStudio() {
                 </span>
                 <span className="mt-0.5 block text-[10px] text-black/45">{sub}</span>
               </button>
-            ))}
+                ))}
+              </>
+            )}
 
             <div className="ml-auto hidden md:block min-w-[230px] rounded-2xl bg-[#f2eee6] px-3 py-2.5 text-xs">
               <b className="text-black/80">
@@ -775,7 +878,7 @@ export default function CarTrayStudio() {
               </b>
               <span className="mt-0.5 block text-black/50">
                 {flattenedArtwork
-                  ? "Original placement is baked in. Undo to reposition."
+                  ? "AI artwork is flattened. Use “Edit Original Photo Again” to reposition."
                   : dpi
                     ? `${dpi} effective DPI · ${quality.label}`
                     : "Upload an image to calculate DPI."}
@@ -786,7 +889,35 @@ export default function CarTrayStudio() {
 
         <aside className="order-3 bg-transparent p-3 md:p-4 xl:my-5 xl:p-0">
           <div className="sticky top-[96px] space-y-4 rounded-[26px] border border-[#d7c8ad]/70 bg-[rgba(255,253,249,.96)] p-5 shadow-[0_16px_40px_rgba(45,36,23,.10)] backdrop-blur">
-            <div>
+            {view === "review" ? (
+              <>
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#9a6a1e]">Review</p>
+                  <h2 className="mt-1 text-[22px] font-black tracking-[-0.03em] text-[#171717]">Ready to order?</h2>
+                  <p className="mt-2 text-sm leading-6 text-black/55">
+                    Check the tray one last time. You can go back to edit without losing your design.
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    setView("editor");
+                    setActiveTool(flattenedArtwork ? "ai" : "upload");
+                  }}
+                  className="w-full rounded-2xl border border-[#d8cbb7] bg-white py-3.5 font-bold text-[#171717] hover:bg-[#faf3e8]"
+                >
+                  ← Back to Edit
+                </button>
+                <button
+                  onClick={add}
+                  disabled={saving}
+                  className="w-full rounded-2xl bg-[#171717] py-3.5 font-bold text-white shadow-[0_8px_18px_rgba(0,0,0,.16)] disabled:opacity-40"
+                >
+                  {saving ? "Adding…" : "Add to Cart →"}
+                </button>
+              </>
+            ) : (
+              <>
+                <div>
               <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#9a6a1e]">
                 {activeTool === "ai" ? "AI Tools" : activeTool === "text" ? "Text" : "Image"}
               </p>
@@ -921,12 +1052,20 @@ export default function CarTrayStudio() {
                     </button>
                   </>
                 ) : (
-                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm">
-                    <b className="text-emerald-900">✓ AI artwork flattened</b>
-                    <p className="mt-1 leading-5 text-emerald-800/80">
-                      The photo is now part of the completed artwork. Use Undo to restore and reposition the original photo.
-                    </p>
-                  </div>
+                  <>
+                    <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm">
+                      <b className="text-emerald-900">✓ AI artwork flattened</b>
+                      <p className="mt-1 leading-5 text-emerald-800/80">
+                        The photo is now part of the completed artwork.
+                      </p>
+                    </div>
+                    <button
+                      onClick={editPhotoAgain}
+                      className="w-full rounded-2xl border border-[#d8cbb7] bg-white py-3.5 font-bold text-[#171717] hover:bg-[#faf3e8]"
+                    >
+                      ← Edit Original Photo Again
+                    </button>
+                  </>
                 )}
               </>
             )}
@@ -1046,6 +1185,8 @@ export default function CarTrayStudio() {
               </div>
               <p className="mt-2 text-black/40">Tray outline never prints.</p>
             </div>
+              </>
+            )}
           </div>
         </aside>
       </main>
