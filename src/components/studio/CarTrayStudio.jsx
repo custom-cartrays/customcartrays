@@ -317,18 +317,29 @@ export default function CarTrayStudio() {
     setError("");
     try {
       const inputs = await composeExpandInputs(),
+        userDirection = expandPrompt.trim(),
+        expansionPrompt = [
+          "Outpaint the masked empty area only and continue the existing image naturally as one seamless scene.",
+          "Match the original image perspective, camera angle, lighting, colors, texture, scale, depth and visual style.",
+          "Do not duplicate, tile, mirror, repeat, collage, zoom, or recreate the protected original image.",
+          "Do not add frames, borders, UI, screenshots, posters, grids, extra copies of people, extra copies of objects, logos, captions, or text.",
+          "Keep the protected original image visually unchanged and use it only as context for the missing surrounding area.",
+          userDirection ? `User direction: ${userDirection}` : "",
+        ]
+          .filter(Boolean)
+          .join(" "),
         r = await fetch("/api/ai/expand", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ...inputs, prompt: expandPrompt }),
+          body: JSON.stringify({ ...inputs, prompt: expansionPrompt }),
         }),
         d = await r.json();
       if (!r.ok) throw new Error(d.error || "AI expand failed");
       commitSnapshot(
         currentSnapshot({
           flattenedArtwork: d.imageUrl,
-          appliedExpandInstruction: expandPrompt.trim(),
-          appliedExpandPrompt: d.effectivePrompt || "",
+          appliedExpandInstruction: userDirection,
+          appliedExpandPrompt: d.effectivePrompt || expansionPrompt,
         }),
       );
     } catch (e) {
@@ -611,14 +622,6 @@ export default function CarTrayStudio() {
           >
             ↷ Redo
           </button>
-          <button
-            onClick={resetTransform}
-            disabled={!!flattenedArtwork || !image}
-            className="min-w-[76px] rounded-xl px-2 py-2.5 text-xs hover:bg-[#f5f1ea] disabled:opacity-25"
-          >
-            Reset
-          </button>
-
           <input
             ref={fileRef}
             type="file"
@@ -631,11 +634,7 @@ export default function CarTrayStudio() {
         <section className="order-1 xl:order-none min-w-0 flex flex-col bg-[#f6f3ed]">
           <div className="px-4 pt-4 md:px-6 flex items-center justify-between text-[11px] uppercase tracking-[0.12em] text-black/45">
             <span>
-              {view === "editor"
-                ? "Editor View"
-                : view === "product"
-                  ? "Product Preview"
-                  : "Print File"}
+              {view === "editor" ? "Editor View" : "Print File"}
             </span>
             <b className="normal-case tracking-normal text-black/60">
               {view === "print" ? "16.5″ × 11″ artwork" : "17″ × 11.5″ tray"}
@@ -649,7 +648,7 @@ export default function CarTrayStudio() {
               onPointerMove={pointerMove}
               onPointerUp={pointerUp}
               onPointerCancel={pointerUp}
-              className={`relative w-full max-w-[980px] ${view === "print" ? "aspect-[16.5/11]" : "aspect-[17/11.5]"} overflow-hidden rounded-[22px] border border-black/10 bg-[#fffdf9] shadow-[0_18px_50px_rgba(45,36,23,.12)] select-none touch-none`}
+              className={`relative w-full max-w-[980px] ${view === "print" ? "aspect-[16.5/11] rounded-none border-0 bg-white shadow-none" : "aspect-[17/11.5] rounded-[22px] border-0 bg-[#efe8dc] shadow-[0_18px_50px_rgba(45,36,23,.12)]"} overflow-hidden select-none touch-none`}
             >
               <div
                 ref={designAreaRef}
@@ -715,7 +714,6 @@ export default function CarTrayStudio() {
               </div>
 
               {view === "editor" && <TrayReference />}
-              {view === "product" && <TrayReference />}
 
               {view === "print" && (
                 <div className="absolute inset-0 z-40 bg-white flex items-center justify-center">
@@ -726,7 +724,7 @@ export default function CarTrayStudio() {
                       src={printPreview}
                       alt="Print-ready artwork preview"
                       draggable={false}
-                      className="absolute inset-0 w-full h-full object-contain"
+                      className="absolute inset-0 w-full h-full object-fill"
                     />
                   ) : (
                     <span className="text-sm text-black/45">Print preview unavailable</span>
@@ -739,8 +737,7 @@ export default function CarTrayStudio() {
           <div className="border-t border-black/10 bg-white px-3 py-3 md:px-4 flex items-center gap-2 overflow-x-auto">
             {[
               ["editor", "Editor", "Edit positioning and text"],
-              ["product", "Product Preview", "Tray without guides"],
-              ["print", "Print File", "4950 × 3300 · no guides"],
+              ["print", "Print File", "4950 × 3300 · artwork only"],
             ].map(([id, label, sub]) => (
               <button
                 key={id}
@@ -902,7 +899,7 @@ export default function CarTrayStudio() {
                     <textarea
                       value={expandPrompt}
                       onChange={(e) => setExpandPrompt(e.target.value)}
-                      placeholder="Optional AI direction…"
+                      placeholder="Optional direction, e.g. continue this scene naturally…"
                       className="h-24 w-full rounded-2xl border border-black/10 bg-[#faf8f4] p-3 outline-none transition focus:border-[#a86f16] focus:ring-2 focus:ring-[#a86f16]/10"
                     />
                     <button
@@ -1013,17 +1010,6 @@ export default function CarTrayStudio() {
                         onBlur={commitTextPreview}
                       />
                     </label>
-                    <div className="grid grid-cols-3 gap-1">
-                      {["left", "center", "right"].map((value) => (
-                        <button
-                          key={value}
-                          onClick={() => updateText({ align: value }, true)}
-                          className={`rounded-lg border p-1.5 ${selectedText.align === value ? "bg-[#171717] text-white" : "bg-white"}`}
-                        >
-                          {value}
-                        </button>
-                      ))}
-                    </div>
                     <button
                       onClick={removeSelectedText}
                       className="text-sm font-semibold text-red-600 hover:underline"
