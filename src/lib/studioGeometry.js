@@ -26,6 +26,21 @@ export const PRINT = Object.freeze({
   heightPx: 3300,
 });
 
+// Recommended placement box for a newly uploaded photo. It is aligned to the
+// bottom of the 16.5 x 11 artwork, leaving the upper 3.5 inches for hooks and
+// AI-generated continuation.
+export const INITIAL_PHOTO_AREA = Object.freeze({
+  widthIn: 16.5,
+  heightIn: 7.5,
+  topIn: 3.5,
+  leftPct: 0,
+  topPct: (3.5 / TRAY.designHeightIn) * 100,
+  widthPct: 100,
+  heightPct: (7.5 / TRAY.designHeightIn) * 100,
+  centerXPct: 50,
+  centerYPct: ((3.5 + 7.5 / 2) / TRAY.designHeightIn) * 100,
+});
+
 export function containSize(sourceWidthPx, sourceHeightPx, boxWidth, boxHeight, scalePercent = 100) {
   if (!sourceWidthPx || !sourceHeightPx || !boxWidth || !boxHeight) return { width: 0, height: 0, factor: 0 };
   const factor = Math.min(boxWidth / sourceWidthPx, boxHeight / sourceHeightPx) * (scalePercent / 100);
@@ -34,7 +49,7 @@ export function containSize(sourceWidthPx, sourceHeightPx, boxWidth, boxHeight, 
 
 export function effectiveDpi(sourceWidthPx, sourceHeightPx, scalePercent = 100) {
   if (!sourceWidthPx || !sourceHeightPx || !scalePercent) return null;
-  const fit = Math.min(TRAY.designWidthIn / sourceWidthPx, TRAY.designHeightIn / sourceHeightPx);
+  const fit = Math.min(INITIAL_PHOTO_AREA.widthIn / sourceWidthPx, INITIAL_PHOTO_AREA.heightIn / sourceHeightPx);
   const placedWidthIn = sourceWidthPx * fit * (scalePercent / 100);
   const placedHeightIn = sourceHeightPx * fit * (scalePercent / 100);
   const dpiX = sourceWidthPx / placedWidthIn;
