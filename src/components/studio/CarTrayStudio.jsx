@@ -23,13 +23,6 @@ const initialEditorState = () => ({
   appliedExpandPrompt: "",
   textLayers: [],
 });
-const TOOLS = [
-  ["ai", "AI", "✦"],
-  ["text", "Add Text", "T"],
-  ["templates", "Templates", "▤"],
-  ["elements", "Elements", "○"],
-  ["background", "Background", "▧"],
-];
 const loadImage = (src) =>
   new Promise((res, rej) => {
     const im = new Image();
@@ -207,6 +200,8 @@ export default function CarTrayStudio() {
     setImage(src);
     if (remember) setOriginalImage(src);
     setActiveTool("upload");
+    setView("editor");
+    setError("");
     const clean = initialEditorState();
     applySnapshot(clean);
     setHistory([clean]);
@@ -220,6 +215,8 @@ export default function CarTrayStudio() {
     setImage(src);
     setOriginalImage("");
     setActiveTool("ai");
+    setView("editor");
+    setError("");
     const clean = { ...initialEditorState(), flattenedArtwork: src };
     applySnapshot(clean);
     setHistory([clean]);
@@ -439,8 +436,20 @@ export default function CarTrayStudio() {
             },
           }),
         }),
-        d = await r.json();
-      if (!r.ok) throw new Error(d.error || "Could not save design");
+        responseText = await r.text();
+      let d = {};
+      try {
+        d = responseText ? JSON.parse(responseText) : {};
+      } catch {
+        d = {};
+      }
+      if (!r.ok) {
+        if (r.status === 413)
+          throw new Error(
+            "This design is too large to save right now. The print upload path still needs optimization before checkout.",
+          );
+        throw new Error(d.error || responseText || "Could not save design");
+      }
       addItem({
         designId: d.designId,
         previewUrl: d.previewUrl,
@@ -539,44 +548,90 @@ export default function CarTrayStudio() {
         : null,
     quality = qualityFromDpi(dpi);
   return (
-    <div className="min-h-screen bg-[#f4f2ed] text-neutral-950">
-      <header className="h-16 bg-[#fffdf9] border-b border-[#d9d2c5] px-4 lg:px-6 flex items-center justify-between sticky top-0 z-50">
-        <button
-          onClick={() => router.push("/")}
-          className="font-black tracking-tight text-left leading-none"
-        >
-          CUSTOM
-          <br />
-          <span className="text-[#8b5b14]">CAR TRAYS</span>
-        </button>
-        <div className="hidden md:flex gap-8 text-sm">
-          <b>
-            <span className="text-[#b57916]">●</span> 1 Design Your Tray
-          </b>
-          <span className="text-neutral-400">○ 2 Review</span>
-          <span className="text-neutral-400">○ 3 Add to Cart</span>
+    <div className="min-h-screen bg-[#f3f0e8] text-[#181716]">
+      <header className="sticky top-0 z-50 border-b border-black/10 bg-white/95 backdrop-blur">
+        <div className="h-[72px] px-4 lg:px-6 flex items-center gap-4">
+          <button
+            onClick={() => router.push("/")}
+            className="shrink-0 flex items-center gap-3 text-left"
+            aria-label="Custom Car Trays home"
+          >
+            <img
+              src="/custom-car-trays-logo.png"
+              alt="Custom Car Trays"
+              className="h-12 w-[112px] object-cover rounded-lg border border-black/10 bg-white shadow-sm"
+            />
+          </button>
+
+          <div className="hidden md:flex flex-1 items-center justify-center gap-7 text-sm">
+            <div className="flex items-center gap-2 font-bold">
+              <span className="grid h-8 w-8 place-items-center rounded-full bg-[#171717] text-white">1</span>
+              <span>Design Your Tray</span>
+            </div>
+            <div className="h-px w-10 bg-black/10" />
+            <div className="flex items-center gap-2 text-black/40">
+              <span className="grid h-8 w-8 place-items-center rounded-full bg-black/10">2</span>
+              <span>Review</span>
+            </div>
+            <div className="h-px w-10 bg-black/10" />
+            <div className="flex items-center gap-2 text-black/40">
+              <span className="grid h-8 w-8 place-items-center rounded-full bg-black/10">3</span>
+              <span>Add to Cart</span>
+            </div>
+          </div>
+
+          <button
+            onClick={add}
+            disabled={!image || saving}
+            className="ml-auto rounded-xl bg-[#171717] px-5 py-3 font-bold text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md disabled:translate-y-0 disabled:cursor-not-allowed disabled:bg-black/25 disabled:shadow-none"
+          >
+            {saving ? "Saving…" : "Continue →"}
+          </button>
         </div>
-        <button
-          onClick={add}
-          disabled={!image || saving}
-          className="rounded-xl bg-neutral-950 text-[#fff8e8] px-5 py-3 font-bold disabled:opacity-35"
-        >
-          {saving ? "Saving…" : "Continue →"}
-        </button>
       </header>
-      <main className="grid xl:grid-cols-[96px_minmax(0,1fr)_290px] min-h-[calc(100vh-4rem)]">
-        <aside className="bg-[#fffdf9] border-r p-2 flex xl:flex-col gap-1 overflow-x-auto">
-          {TOOLS.map(([id, label, icon], i) => (
-            <button
-              key={id}
-              onClick={() => setActiveTool(id)}
-              disabled={i > 2 || (id === "text" && !image)}
-              className={`min-w-[76px] rounded-xl px-2 py-3 text-xs flex flex-col items-center gap-1 disabled:opacity-35 ${activeTool === id ? "bg-[#f1eadf] font-bold" : "hover:bg-[#f1eadf]"}`}
-            >
-              <span className="text-2xl">{icon}</span>
-              {label}
-            </button>
-          ))}
+
+      <main className="grid min-h-[calc(100vh-72px)] xl:grid-cols-[92px_minmax(0,1fr)_320px]">
+        <aside className="order-2 xl:order-none border-t xl:border-t-0 xl:border-r border-black/10 bg-white px-2 py-3 flex xl:flex-col items-center gap-2 overflow-x-auto">
+          <button
+            onClick={() => setActiveTool("ai")}
+            className={`min-w-[76px] rounded-2xl px-2 py-3 text-xs flex flex-col items-center gap-1.5 transition ${activeTool === "ai" ? "bg-[#f1eadf] font-bold shadow-sm" : "hover:bg-[#f5f1ea]"}`}
+          >
+            <span className="text-2xl leading-none">✦</span>
+            AI
+          </button>
+          <button
+            onClick={() => setActiveTool("text")}
+            disabled={!image}
+            className={`min-w-[76px] rounded-2xl px-2 py-3 text-xs flex flex-col items-center gap-1.5 transition disabled:opacity-30 ${activeTool === "text" ? "bg-[#f1eadf] font-bold shadow-sm" : "hover:bg-[#f5f1ea]"}`}
+          >
+            <span className="text-2xl leading-none font-serif">T</span>
+            Add Text
+          </button>
+
+          <div className="hidden xl:block my-1 h-px w-12 bg-black/10" />
+
+          <button
+            onClick={undo}
+            disabled={!historyIndex}
+            className="min-w-[76px] rounded-xl px-2 py-2.5 text-xs hover:bg-[#f5f1ea] disabled:opacity-25"
+          >
+            ↶ Undo
+          </button>
+          <button
+            onClick={redo}
+            disabled={historyIndex >= history.length - 1}
+            className="min-w-[76px] rounded-xl px-2 py-2.5 text-xs hover:bg-[#f5f1ea] disabled:opacity-25"
+          >
+            ↷ Redo
+          </button>
+          <button
+            onClick={resetTransform}
+            disabled={!!flattenedArtwork || !image}
+            className="min-w-[76px] rounded-xl px-2 py-2.5 text-xs hover:bg-[#f5f1ea] disabled:opacity-25"
+          >
+            Reset
+          </button>
+
           <input
             ref={fileRef}
             type="file"
@@ -584,41 +639,22 @@ export default function CarTrayStudio() {
             className="hidden"
             onChange={readFile}
           />
-          <button
-            onClick={undo}
-            disabled={!historyIndex}
-            className="p-3 text-xs disabled:opacity-25"
-          >
-            ↶ Undo
-          </button>
-          <button
-            onClick={redo}
-            disabled={historyIndex >= history.length - 1}
-            className="p-3 text-xs disabled:opacity-25"
-          >
-            ↷ Redo
-          </button>
-          <button
-            onClick={resetTransform}
-            disabled={!!flattenedArtwork}
-            className="p-3 text-xs disabled:opacity-25"
-          >
-            Reset
-          </button>
         </aside>
-        <section className="min-w-0 flex flex-col">
-          <div className="px-4 pt-4 flex justify-between text-xs text-neutral-500">
+
+        <section className="order-1 xl:order-none min-w-0 flex flex-col bg-[#f6f3ed]">
+          <div className="px-4 pt-4 md:px-6 flex items-center justify-between text-[11px] uppercase tracking-[0.12em] text-black/45">
             <span>
               {view === "editor"
-                ? "EDITOR VIEW"
+                ? "Editor View"
                 : view === "product"
-                  ? "PRODUCT PREVIEW"
-                  : "PRINT FILE"}
+                  ? "Product Preview"
+                  : "Print File"}
             </span>
-            <b>
+            <b className="normal-case tracking-normal text-black/60">
               {view === "print" ? "16.5″ × 11″ artwork" : "17″ × 11.5″ tray"}
             </b>
           </div>
+
           <div className="flex-1 p-3 md:p-6 flex items-center justify-center">
             <div
               ref={workspaceRef}
@@ -626,11 +662,11 @@ export default function CarTrayStudio() {
               onPointerMove={pointerMove}
               onPointerUp={pointerUp}
               onPointerCancel={pointerUp}
-              className={`relative w-full max-w-[980px] ${view === "print" ? "aspect-[16.5/11]" : "aspect-[17/11.5]"} bg-white shadow-xl overflow-hidden select-none touch-none`}
+              className={`relative w-full max-w-[980px] ${view === "print" ? "aspect-[16.5/11]" : "aspect-[17/11.5]"} overflow-hidden rounded-[22px] border border-black/10 bg-[#fffdf9] shadow-[0_18px_50px_rgba(45,36,23,.12)] select-none touch-none`}
             >
               <div
                 ref={designAreaRef}
-                className={`${view === "print" ? "absolute inset-0" : "absolute"} z-0 bg-[#f2eee7] overflow-hidden flex items-center justify-center`}
+                className={`${view === "print" ? "absolute inset-0" : "absolute"} z-0 overflow-hidden bg-[#efe8dc] flex items-center justify-center`}
                 style={
                   view === "print"
                     ? undefined
@@ -642,7 +678,21 @@ export default function CarTrayStudio() {
                       }
                 }
               >
-                {" "}
+                {view === "editor" && image && !flattenedArtwork && (
+                  <div
+                    className="absolute inset-x-0 z-[6] border-y border-dashed border-[#a97924]/80 pointer-events-none"
+                    style={{
+                      height: `${INITIAL_PHOTO_AREA.heightPct}%`,
+                      top: `${INITIAL_PHOTO_AREA.centerYPct}%`,
+                      transform: "translateY(-50%)",
+                    }}
+                  >
+                    <span className="absolute left-3 top-2 rounded-full bg-white/90 px-2.5 py-1 text-[10px] font-semibold text-[#7a561b] shadow-sm">
+                      Photo area · 16.5″ × 7.5″
+                    </span>
+                  </div>
+                )}
+
                 {flattenedArtwork ? (
                   <img
                     src={flattenedArtwork}
@@ -659,28 +709,31 @@ export default function CarTrayStudio() {
                     style={artworkStyle}
                   />
                 ) : (
-                  <div className="text-center text-neutral-400 px-6">
-                    <b>Upload your photo</b>
-                    <p className="text-sm">
-                      Position it first; AI Expand then flattens the completed
-                      artwork.
+                  <div className="max-w-md text-center text-black/35 px-6">
+                    <div className="mx-auto mb-4 grid h-12 w-12 place-items-center rounded-2xl border border-black/10 bg-white text-xl shadow-sm">
+                      ◫
+                    </div>
+                    <b className="text-base text-black/55">Upload a photo to start</b>
+                    <p className="mt-1 text-sm leading-6">
+                      We place it inside the 16.5″ × 7.5″ photo area. AI Expand can then complete the full 16.5″ × 11″ artwork.
                     </p>
                   </div>
                 )}
+
                 <TextLayersOverlay
                   layers={textLayers}
                   onPointerDown={textPointerDown}
                   selectedId={selectedTextId}
                 />
               </div>
+
               {view === "editor" && <TrayReference showGuide />}
-              {view === "product" && <TrayReference showGuide={false} />}{" "}
+              {view === "product" && <TrayReference showGuide={false} />}
+
               {view === "print" && (
                 <div className="absolute inset-0 z-40 bg-white flex items-center justify-center">
                   {renderingPrint ? (
-                    <span className="text-sm text-neutral-500">
-                      Rendering 4950 × 3300 print file…
-                    </span>
+                    <span className="text-sm text-black/50">Rendering 4950 × 3300 print file…</span>
                   ) : printPreview ? (
                     <img
                       src={printPreview}
@@ -689,50 +742,44 @@ export default function CarTrayStudio() {
                       className="absolute inset-0 w-full h-full object-contain"
                     />
                   ) : (
-                    <span className="text-sm text-neutral-500">
-                      Print preview unavailable
-                    </span>
+                    <span className="text-sm text-black/45">Print preview unavailable</span>
                   )}
                 </div>
               )}
             </div>
           </div>
-          <div className="bg-[#fffdf9] border-t p-3 flex gap-3 overflow-x-auto">
+
+          <div className="border-t border-black/10 bg-white px-3 py-3 md:px-4 flex items-center gap-2 overflow-x-auto">
             {[
-              ["editor", "Editor View"],
-              ["product", "Product Preview"],
-              ["car", "In-Car Preview"],
-              ["print", "Print File"],
-            ].map(([id, label]) => (
+              ["editor", "Editor", "Edit positioning and text"],
+              ["product", "Product Preview", "Tray without guides"],
+              ["print", "Print File", "4950 × 3300 · no guides"],
+            ].map(([id, label, sub]) => (
               <button
                 key={id}
                 onClick={() => (id === "print" ? showPrintFile() : setView(id))}
                 disabled={
-                  id === "car" ||
-                  (id === "print" &&
-                    (expanding || !productionReady || renderingPrint))
+                  id === "print" &&
+                  (expanding || !productionReady || renderingPrint)
                 }
-                className={`min-w-[130px] rounded-xl border p-3 text-sm disabled:opacity-35 ${view === id ? "border-[#9a6411] bg-[#fbf4e7] font-bold" : ""} ${id === "car" ? "opacity-35" : ""}`}
+                className={`min-w-[150px] rounded-2xl border px-3 py-2.5 text-left transition disabled:opacity-35 ${view === id ? "border-[#a86f16] bg-[#fbf3e6] shadow-sm" : "border-black/10 bg-white hover:bg-[#faf8f4]"}`}
               >
-                {id === "print" && !productionReady && image
-                  ? "Preparing Print…"
-                  : label}
-                {id === "print" && (
-                  <span className="block text-[10px] text-neutral-400">
-                    4950 × 3300 · no guides
-                  </span>
-                )}
+                <span className="block text-sm font-bold">
+                  {id === "print" && !productionReady && image ? "Preparing Print…" : label}
+                </span>
+                <span className="mt-0.5 block text-[10px] text-black/45">{sub}</span>
               </button>
             ))}
-            <div className="ml-auto min-w-[210px] rounded-xl bg-[#f5efe4] p-3 text-xs">
-              <b>
+
+            <div className="ml-auto hidden md:block min-w-[230px] rounded-2xl bg-[#f2eee6] px-3 py-2.5 text-xs">
+              <b className="text-black/80">
                 {flattenedArtwork
-                  ? "Flattened AI artwork"
+                  ? "AI artwork ready"
                   : sourceSize
                     ? `${sourceSize.w} × ${sourceSize.h}px`
                     : "Image quality"}
               </b>
-              <span className="block">
+              <span className="mt-0.5 block text-black/50">
                 {flattenedArtwork
                   ? "Original placement is baked in. Undo to reposition."
                   : dpi
@@ -742,219 +789,250 @@ export default function CarTrayStudio() {
             </div>
           </div>
         </section>
-        <aside className="bg-[#fffdf9] border-l p-5 space-y-5">
-          {activeTool === "upload" && (
-            <>
-              <button
-                onClick={() => fileRef.current?.click()}
-                className="w-full rounded-xl bg-neutral-950 text-white py-3 font-bold"
-              >
-                {image ? "Replace Image" : "Upload Image"}
-              </button>
-              {image && !flattenedArtwork && (
-                <>
-                  <label className="block text-sm">
-                    Scale <b className="float-right">{scale}%</b>
-                    <input
-                      className="w-full"
-                      type="range"
-                      min="20"
-                      max="180"
-                      value={scale}
-                      onChange={(e) =>
-                        previewTransform({
-                          ...transform,
-                          scale: +e.target.value,
-                        })
-                      }
-                      onPointerUp={() => commitTransform(transform)}
-                    />
-                  </label>
-                  <label className="block text-sm">
-                    Rotate <b className="float-right">{rot}°</b>
-                    <input
-                      className="w-full"
-                      type="range"
-                      min="-180"
-                      max="180"
-                      value={rot}
-                      onChange={(e) =>
-                        previewTransform({ ...transform, rot: +e.target.value })
-                      }
-                      onPointerUp={() => commitTransform(transform)}
-                    />
-                  </label>
-                  <div className="grid grid-cols-3 gap-2 max-w-[150px] mx-auto">
-                    <span />
-                    <button onClick={() => nudge(0, -2)}>↑</button>
-                    <span />
-                    <button onClick={() => nudge(-2, 0)}>←</button>
-                    <button onClick={() => nudge(0, 2)}>↓</button>
-                    <button onClick={() => nudge(2, 0)}>→</button>
-                  </div>
-                </>
-              )}
-              {image && (
+
+        <aside className="order-3 border-t xl:border-t-0 xl:border-l border-black/10 bg-white p-4 md:p-5">
+          <div className="sticky top-[92px] space-y-4">
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-black/35">
+                {activeTool === "ai" ? "AI Tools" : activeTool === "text" ? "Text" : "Image"}
+              </p>
+              <h2 className="mt-1 text-xl font-black tracking-tight">
+                {activeTool === "ai"
+                  ? image
+                    ? "Complete your artwork"
+                    : "Create with AI"
+                  : activeTool === "text"
+                    ? "Add a message"
+                    : image
+                      ? "Position your photo"
+                      : "Start your design"}
+              </h2>
+            </div>
+
+            {activeTool === "upload" && (
+              <>
                 <button
-                  onClick={() => {
-                    setImage("");
-                    setOriginalImage("");
-                    setSourceSize(null);
-                    const clean = initialEditorState();
-                    applySnapshot(clean);
-                    setHistory([clean]);
-                    setHistoryIndex(0);
-                  }}
-                  className="text-sm text-red-600"
+                  onClick={() => fileRef.current?.click()}
+                  className="w-full rounded-xl bg-[#171717] py-3.5 font-bold text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
                 >
-                  Remove image
+                  {image ? "Replace Image" : "Upload Image"}
                 </button>
-              )}
-            </>
-          )}
-          {activeTool === "ai" && !image && (
-            <>
-              <textarea
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-                placeholder="Describe a complete 16.5″ × 11″ design…"
-                className="w-full h-24 border rounded-xl p-3"
-              />
-              <button
-                onClick={generate}
-                disabled={loading || !prompt.trim()}
-                className="w-full rounded-xl bg-neutral-950 text-white py-3 font-bold disabled:opacity-35"
-              >
-                {loading ? "Generating…" : "✦ Generate with AI"}
-              </button>
-            </>
-          )}
-          {activeTool === "ai" && image && (
-            <>
-              {!flattenedArtwork ? (
-                <>
-                  <textarea
-                    value={expandPrompt}
-                    onChange={(e) => setExpandPrompt(e.target.value)}
-                    placeholder="Optional AI direction…"
-                    className="w-full h-20 border rounded-xl p-3"
-                  />
-                  <button
-                    onClick={expand}
-                    disabled={expanding}
-                    className="w-full rounded-xl bg-neutral-950 text-white py-3 font-bold disabled:opacity-35"
-                  >
-                    {expanding ? "✦ Expanding…" : "✦ AI Expand Background"}
-                  </button>
-                </>
-              ) : (
-                <div className="rounded-xl border bg-[#f5efe4] p-3 text-sm">
-                  <b>AI artwork flattened</b>
-                  <p className="mt-1 text-neutral-600">
-                    {historyIndex > 0
-                      ? "The photo is now part of the generated artwork. Use Undo to restore and reposition the original photo."
-                      : "The generated artwork fills the complete 16.5″ × 11″ canvas."}
-                  </p>
-                </div>
-              )}
-            </>
-          )}
-          {activeTool === "text" && image && (
-            <>
-              <button
-                onClick={addText}
-                className="w-full rounded-xl bg-neutral-950 text-white py-3 font-bold"
-              >
-                Add Text Layer
-              </button>
-              {selectedText && (
-                <div className="rounded-xl border p-3 space-y-3">
-                  <b className="text-sm">Text layer</b>
-                  <input
-                    value={selectedText.text}
-                    onChange={(e) => updateText({ text: e.target.value })}
-                    onBlur={commitTextPreview}
-                    className="w-full border rounded-lg p-2"
-                  />
-                  <select
-                    value={selectedText.fontFamily}
-                    onChange={(e) =>
-                      updateText({ fontFamily: e.target.value }, true)
-                    }
-                    className="w-full border rounded-lg p-2"
-                  >
-                    <option>Arial</option>
-                    <option>Georgia</option>
-                    <option>Impact</option>
-                  </select>
-                  <label className="block text-sm">
-                    Size <b className="float-right">{selectedText.size}%</b>
-                    <input
-                      className="w-full"
-                      type="range"
-                      min="2"
-                      max="20"
-                      value={selectedText.size}
-                      onChange={(e) => updateText({ size: +e.target.value })}
-                      onPointerUp={commitTextPreview}
-                    />
-                  </label>
-                  <label className="block text-sm">
-                    Rotate{" "}
-                    <b className="float-right">{selectedText.rotation}°</b>
-                    <input
-                      className="w-full"
-                      type="range"
-                      min="-180"
-                      max="180"
-                      value={selectedText.rotation}
-                      onChange={(e) =>
-                        updateText({ rotation: +e.target.value })
-                      }
-                      onPointerUp={commitTextPreview}
-                    />
-                  </label>
-                  <label className="flex items-center justify-between text-sm">
-                    Color
-                    <input
-                      type="color"
-                      value={selectedText.color}
-                      onChange={(e) => updateText({ color: e.target.value })}
-                      onBlur={commitTextPreview}
-                    />
-                  </label>
-                  <div className="grid grid-cols-3 gap-1">
-                    {["left", "center", "right"].map((value) => (
-                      <button
-                        key={value}
-                        onClick={() => updateText({ align: value }, true)}
-                        className={`border rounded p-1 ${selectedText.align === value ? "bg-neutral-900 text-white" : ""}`}
-                      >
-                        {value}
-                      </button>
-                    ))}
+
+                {image && !flattenedArtwork && (
+                  <div className="rounded-2xl border border-black/10 bg-[#faf8f4] p-4 space-y-4">
+                    <label className="block text-sm">
+                      <span className="flex justify-between font-semibold">
+                        <span>Scale</span><b>{scale}%</b>
+                      </span>
+                      <input
+                        className="mt-2 w-full accent-[#a86f16]"
+                        type="range"
+                        min="20"
+                        max="180"
+                        value={scale}
+                        onChange={(e) =>
+                          previewTransform({ ...transform, scale: +e.target.value })
+                        }
+                        onPointerUp={() => commitTransform(transform)}
+                      />
+                    </label>
+                    <label className="block text-sm">
+                      <span className="flex justify-between font-semibold">
+                        <span>Rotate</span><b>{rot}°</b>
+                      </span>
+                      <input
+                        className="mt-2 w-full accent-[#a86f16]"
+                        type="range"
+                        min="-180"
+                        max="180"
+                        value={rot}
+                        onChange={(e) =>
+                          previewTransform({ ...transform, rot: +e.target.value })
+                        }
+                        onPointerUp={() => commitTransform(transform)}
+                      />
+                    </label>
+                    <div>
+                      <p className="mb-2 text-xs font-bold uppercase tracking-wide text-black/40">Position</p>
+                      <div className="grid grid-cols-3 gap-2 max-w-[170px]">
+                        <span />
+                        <button className="rounded-lg border bg-white py-2 hover:bg-[#f1eadf]" onClick={() => nudge(0, -2)}>↑</button>
+                        <span />
+                        <button className="rounded-lg border bg-white py-2 hover:bg-[#f1eadf]" onClick={() => nudge(-2, 0)}>←</button>
+                        <button className="rounded-lg border bg-white py-2 hover:bg-[#f1eadf]" onClick={() => nudge(0, 2)}>↓</button>
+                        <button className="rounded-lg border bg-white py-2 hover:bg-[#f1eadf]" onClick={() => nudge(2, 0)}>→</button>
+                      </div>
+                    </div>
                   </div>
+                )}
+
+                {image && (
                   <button
-                    onClick={removeSelectedText}
-                    className="text-sm text-red-600"
+                    onClick={() => {
+                      setImage("");
+                      setOriginalImage("");
+                      setSourceSize(null);
+                      setView("editor");
+                      setError("");
+                      const clean = initialEditorState();
+                      applySnapshot(clean);
+                      setHistory([clean]);
+                      setHistoryIndex(0);
+                    }}
+                    className="text-sm font-semibold text-red-600 hover:underline"
                   >
-                    Remove text
+                    Remove image
                   </button>
-                </div>
-              )}
-            </>
-          )}
-          {error && <p className="text-red-600 text-sm">⚠ {error}</p>}
-          <div className="border-t pt-4 text-xs text-neutral-500">
-            <b className="text-neutral-900">Design area</b>
-            <br />
-            16.5″ × 11″
-            <br />
-            {flattenedArtwork
-              ? "AI result is flattened. Text remains editable."
-              : "Position the original photo before AI Expand."}
-            <br />
-            Guides never print.
+                )}
+              </>
+            )}
+
+            {activeTool === "ai" && !image && (
+              <>
+                <textarea
+                  value={prompt}
+                  onChange={(e) => setPrompt(e.target.value)}
+                  placeholder="Describe a complete 16.5″ × 11″ design…"
+                  className="h-28 w-full rounded-2xl border border-black/10 bg-[#faf8f4] p-3 outline-none transition focus:border-[#a86f16] focus:ring-2 focus:ring-[#a86f16]/10"
+                />
+                <button
+                  onClick={generate}
+                  disabled={loading || !prompt.trim()}
+                  className="w-full rounded-xl bg-[#171717] py-3.5 font-bold text-white shadow-sm disabled:opacity-35"
+                >
+                  {loading ? "Generating…" : "✦ Generate with AI"}
+                </button>
+              </>
+            )}
+
+            {activeTool === "ai" && image && (
+              <>
+                {!flattenedArtwork ? (
+                  <>
+                    <div className="rounded-2xl border border-[#d8c7aa] bg-[#fbf4e8] p-3 text-xs leading-5 text-[#6f5426]">
+                      Your photo stays inside the 16.5″ × 7.5″ placement area. AI fills the rest of the 16.5″ × 11″ artwork.
+                    </div>
+                    <textarea
+                      value={expandPrompt}
+                      onChange={(e) => setExpandPrompt(e.target.value)}
+                      placeholder="Optional AI direction…"
+                      className="h-24 w-full rounded-2xl border border-black/10 bg-[#faf8f4] p-3 outline-none transition focus:border-[#a86f16] focus:ring-2 focus:ring-[#a86f16]/10"
+                    />
+                    <button
+                      onClick={expand}
+                      disabled={expanding}
+                      className="w-full rounded-xl bg-[#171717] py-3.5 font-bold text-white shadow-sm disabled:opacity-35"
+                    >
+                      {expanding ? "✦ Expanding…" : "✦ AI Expand Background"}
+                    </button>
+                  </>
+                ) : (
+                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm">
+                    <b className="text-emerald-900">✓ AI artwork flattened</b>
+                    <p className="mt-1 leading-5 text-emerald-800/80">
+                      The photo is now part of the completed artwork. Use Undo to restore and reposition the original photo.
+                    </p>
+                  </div>
+                )}
+              </>
+            )}
+
+            {activeTool === "text" && image && (
+              <>
+                <button
+                  onClick={addText}
+                  className="w-full rounded-xl bg-[#171717] py-3.5 font-bold text-white shadow-sm"
+                >
+                  Add Text Layer
+                </button>
+                {selectedText && (
+                  <div className="rounded-2xl border border-black/10 bg-[#faf8f4] p-4 space-y-3">
+                    <b className="text-sm">Text layer</b>
+                    <input
+                      value={selectedText.text}
+                      onChange={(e) => updateText({ text: e.target.value })}
+                      onBlur={commitTextPreview}
+                      className="w-full rounded-lg border border-black/10 bg-white p-2"
+                    />
+                    <select
+                      value={selectedText.fontFamily}
+                      onChange={(e) => updateText({ fontFamily: e.target.value }, true)}
+                      className="w-full rounded-lg border border-black/10 bg-white p-2"
+                    >
+                      <option>Arial</option>
+                      <option>Georgia</option>
+                      <option>Impact</option>
+                    </select>
+                    <label className="block text-sm">
+                      Size <b className="float-right">{selectedText.size}%</b>
+                      <input
+                        className="w-full accent-[#a86f16]"
+                        type="range"
+                        min="2"
+                        max="20"
+                        value={selectedText.size}
+                        onChange={(e) => updateText({ size: +e.target.value })}
+                        onPointerUp={commitTextPreview}
+                      />
+                    </label>
+                    <label className="block text-sm">
+                      Rotate <b className="float-right">{selectedText.rotation}°</b>
+                      <input
+                        className="w-full accent-[#a86f16]"
+                        type="range"
+                        min="-180"
+                        max="180"
+                        value={selectedText.rotation}
+                        onChange={(e) => updateText({ rotation: +e.target.value })}
+                        onPointerUp={commitTextPreview}
+                      />
+                    </label>
+                    <label className="flex items-center justify-between text-sm">
+                      Color
+                      <input
+                        type="color"
+                        value={selectedText.color}
+                        onChange={(e) => updateText({ color: e.target.value })}
+                        onBlur={commitTextPreview}
+                      />
+                    </label>
+                    <div className="grid grid-cols-3 gap-1">
+                      {["left", "center", "right"].map((value) => (
+                        <button
+                          key={value}
+                          onClick={() => updateText({ align: value }, true)}
+                          className={`rounded-lg border p-1.5 ${selectedText.align === value ? "bg-[#171717] text-white" : "bg-white"}`}
+                        >
+                          {value}
+                        </button>
+                      ))}
+                    </div>
+                    <button
+                      onClick={removeSelectedText}
+                      className="text-sm font-semibold text-red-600 hover:underline"
+                    >
+                      Remove text
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
+
+            {error && (
+              <div className="rounded-2xl border border-red-200 bg-red-50 p-3 text-sm leading-5 text-red-700">
+                ⚠ {error}
+              </div>
+            )}
+
+            <div className="rounded-2xl border border-black/10 bg-[#faf8f4] p-4 text-xs leading-5 text-black/55">
+              <b className="text-black/80">Artwork geometry</b>
+              <div className="mt-2 grid grid-cols-[1fr_auto] gap-x-3 gap-y-1">
+                <span>Photo placement</span><b>16.5″ × 7.5″</b>
+                <span>Final AI / print</span><b>16.5″ × 11″</b>
+                <span>Physical tray</span><b>17″ × 11.5″</b>
+              </div>
+              <p className="mt-2 text-black/40">Tray outline and guides never print.</p>
+            </div>
           </div>
         </aside>
       </main>
