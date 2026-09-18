@@ -404,6 +404,27 @@ export default function CarTrayStudio() {
       ctx.restore();
     });
   };
+  const canvasToDataUrl = (canvas, type = "image/jpeg", quality = 0.92) =>
+    new Promise((resolve, reject) => {
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) {
+            reject(new Error("Could not encode artwork"));
+            return;
+          }
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = () => reject(new Error("Could not read encoded artwork"));
+          reader.readAsDataURL(blob);
+        },
+        type,
+        quality,
+      );
+    });
+  const yieldToBrowser = () =>
+    new Promise((resolve) =>
+      requestAnimationFrame(() => requestAnimationFrame(resolve)),
+    );
   const renderProduction = async (width, height, quality = 0.92) => {
     const c = document.createElement("canvas");
     c.width = width;
@@ -416,7 +437,7 @@ export default function CarTrayStudio() {
     else
       drawPlaced(ctx, await loadImage(originalImage || image), width, height);
     drawTextLayers(ctx, width, height);
-    return c.toDataURL("image/jpeg", quality);
+    return await canvasToDataUrl(c, "image/jpeg", quality);
   };
   const showPrintFile = async () => {
     if (!image || expanding || !productionReady || renderingPrint) return;
@@ -437,11 +458,13 @@ export default function CarTrayStudio() {
     if (!image || expanding || reviewing || !productionReady) return;
     setReviewing(true);
     setError("");
+    setView("review");
+    setSelectedTextId(null);
     try {
+      // Let the Review UI paint before doing canvas work so the click stays responsive.
+      await yieldToBrowser();
       const preview = await renderProduction(1485, 990, 0.9);
       setReviewPreview(preview);
-      setView("review");
-      setSelectedTextId(null);
     } catch (e) {
       setError(e.message);
       setView("editor");
@@ -454,6 +477,8 @@ export default function CarTrayStudio() {
     setSaving(true);
     setError("");
     try {
+      // Paint the loading state before generating large production canvases.
+      await yieldToBrowser();
       const printDataUrl =
         printPreview || (await renderProduction(4950, 3300, 0.95));
       setPrintPreview(printDataUrl);
