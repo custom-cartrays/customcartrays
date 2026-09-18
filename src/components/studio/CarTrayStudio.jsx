@@ -23,6 +23,22 @@ const initialEditorState = () => ({
   appliedExpandPrompt: "",
   textLayers: [],
 });
+const TRAY_PATH_D =
+  "M92 1135 Q28 1125 28 1038 L28 118 Q28 16 120 16 L476 16 Q505 16 505 50 L505 136 Q505 181 462 181 Q426 181 381 151 Q347 130 315 151 Q280 174 280 225 L280 282 Q280 354 353 354 Q486 307 850 307 Q1214 307 1347 354 Q1420 354 1420 282 L1420 225 Q1420 174 1385 151 Q1353 130 1319 151 Q1274 181 1238 181 Q1195 181 1195 136 L1195 50 Q1195 16 1224 16 L1580 16 Q1672 16 1672 118 L1672 1038 Q1672 1125 1608 1135 Q850 1150 92 1135 Z",
+  TRAY_MASK_URL = `url("data:image/svg+xml,${encodeURIComponent(
+    `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1700 1150' preserveAspectRatio='none'><path d='${TRAY_PATH_D}' fill='white'/></svg>`,
+  )}")`,
+  trayMaskStyle = {
+    WebkitMaskImage: TRAY_MASK_URL,
+    maskImage: TRAY_MASK_URL,
+    WebkitMaskRepeat: "no-repeat",
+    maskRepeat: "no-repeat",
+    WebkitMaskSize: "100% 100%",
+    maskSize: "100% 100%",
+    WebkitMaskPosition: "center",
+    maskPosition: "center",
+  };
+
 const loadImage = (src) =>
   new Promise((res, rej) => {
     const im = new Image();
@@ -73,7 +89,7 @@ function TrayReference() {
       className="absolute inset-0 w-full h-full pointer-events-none z-30"
     >
       <path
-        d="M92 1135 Q28 1125 28 1038 L28 118 Q28 16 120 16 L476 16 Q505 16 505 50 L505 136 Q505 181 462 181 Q426 181 381 151 Q347 130 315 151 Q280 174 280 225 L280 282 Q280 354 353 354 Q486 307 850 307 Q1214 307 1347 354 Q1420 354 1420 282 L1420 225 Q1420 174 1385 151 Q1353 130 1319 151 Q1274 181 1238 181 Q1195 181 1195 136 L1195 50 Q1195 16 1224 16 L1580 16 Q1672 16 1672 118 L1672 1038 Q1672 1125 1608 1135 Q850 1150 92 1135 Z"
+        d={TRAY_PATH_D}
         fill="rgba(246,239,226,.18)"
         stroke="#171717"
         strokeWidth="5"
@@ -845,81 +861,86 @@ export default function CarTrayStudio() {
               className={`relative w-full max-w-[980px] ${view === "print" ? "aspect-[16.5/11] rounded-[18px] border border-black/5 bg-white shadow-[0_18px_48px_rgba(45,36,23,.10)]" : "aspect-[17/11.5] rounded-[30px] border border-[#d6c19b]/55 bg-[#efe8dc] shadow-[0_24px_70px_rgba(45,36,23,.15)]"} overflow-hidden select-none touch-none`}
             >
               <div
-                ref={designAreaRef}
-                className={`${view === "print" ? "absolute inset-0" : "absolute"} z-0 overflow-hidden bg-[#efe8dc] flex items-center justify-center`}
-                style={
-                  view === "print"
-                    ? undefined
-                    : {
-                        left: `${DESIGN_AREA_UI.leftPct}%`,
-                        top: `${DESIGN_AREA_UI.topPct}%`,
-                        width: `${DESIGN_AREA_UI.widthPct}%`,
-                        height: `${DESIGN_AREA_UI.heightPct}%`,
-                      }
-                }
+                className="absolute inset-0 z-0"
+                style={view === "print" ? undefined : trayMaskStyle}
               >
-                {view === "editor" && image && !flattenedArtwork && (
-                  <div
-                    className="absolute inset-x-0 z-[6] bg-[#a97924]/[0.025] pointer-events-none"
-                    style={{
-                      height: `${INITIAL_PHOTO_AREA.heightPct}%`,
-                      top: `${INITIAL_PHOTO_AREA.centerYPct}%`,
-                      transform: "translateY(-50%)",
-                    }}
-                  >
-                    <span className="absolute left-3 top-2 rounded-full bg-white/90 px-2.5 py-1 text-[10px] font-semibold text-[#7a561b] shadow-sm">
-                      Photo area · 16.5″ × 7.5″
-                    </span>
-                  </div>
-                )}
-
-                {view === "review" && reviewPreview ? (
-                  <img
-                    src={reviewPreview}
-                    alt="Review artwork"
-                    draggable={false}
-                    className="absolute inset-0 h-full w-full object-fill pointer-events-none"
-                  />
-                ) : flattenedArtwork ? (
-                  <img
-                    src={flattenedArtwork}
-                    alt="Flattened AI artwork"
-                    draggable={false}
-                    className="absolute inset-0 w-full h-full object-fill pointer-events-none"
-                  />
-                ) : image ? (
-                  <img
-                    src={originalImage || image}
-                    alt="Customer original artwork"
-                    draggable={false}
-                    className="max-w-full max-h-full object-contain absolute pointer-events-none z-10"
-                    style={artworkStyle}
-                  />
-                ) : (
-                  <div className="max-w-md text-center text-black/35 px-6">
-                    <div className="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-2xl border border-[#cda45e]/35 bg-white/85 text-xl text-[#8a5a14] shadow-[0_8px_20px_rgba(79,58,24,.10)]">
-                      ▧
+                <div
+                  ref={designAreaRef}
+                  className={`${view === "print" ? "absolute inset-0 overflow-hidden" : "absolute overflow-visible"} bg-[#efe8dc] flex items-center justify-center`}
+                  style={
+                    view === "print"
+                      ? undefined
+                      : {
+                          left: `${DESIGN_AREA_UI.leftPct}%`,
+                          top: `${DESIGN_AREA_UI.topPct}%`,
+                          width: `${DESIGN_AREA_UI.widthPct}%`,
+                          height: `${DESIGN_AREA_UI.heightPct}%`,
+                        }
+                  }
+                >
+                  {view === "editor" && image && !flattenedArtwork && (
+                    <div
+                      className="absolute inset-x-0 z-[6] bg-[#a97924]/[0.025] pointer-events-none"
+                      style={{
+                        height: `${INITIAL_PHOTO_AREA.heightPct}%`,
+                        top: `${INITIAL_PHOTO_AREA.centerYPct}%`,
+                        transform: "translateY(-50%)",
+                      }}
+                    >
+                      <span className="absolute left-3 top-2 rounded-full bg-white/90 px-2.5 py-1 text-[10px] font-semibold text-[#7a561b] shadow-sm">
+                        Photo area · 16.5″ × 7.5″
+                      </span>
                     </div>
-                    <b className="text-base text-black/55">Upload a photo to start</b>
-                    <p className="mt-1 text-sm leading-6">
-                      We place it inside the 16.5″ × 7.5″ photo area. AI Expand can then complete the full 16.5″ × 11″ artwork.
-                    </p>
-                  </div>
-                )}
+                  )}
 
-                {view === "editor" && image && !flattenedArtwork && (
-                  <div className="pointer-events-none absolute bottom-3 left-1/2 z-30 -translate-x-1/2 rounded-full bg-black/70 px-3 py-1.5 text-[11px] font-semibold text-white shadow-lg xl:hidden">
-                    Drag · Pinch to resize · Twist to rotate
-                  </div>
-                )}
+                  {view === "review" && reviewPreview ? (
+                    <img
+                      src={reviewPreview}
+                      alt="Review artwork"
+                      draggable={false}
+                      className="absolute inset-0 h-full w-full object-fill pointer-events-none"
+                    />
+                  ) : flattenedArtwork ? (
+                    <img
+                      src={flattenedArtwork}
+                      alt="Flattened AI artwork"
+                      draggable={false}
+                      className="absolute inset-0 w-full h-full object-fill pointer-events-none"
+                    />
+                  ) : image ? (
+                    <img
+                      src={originalImage || image}
+                      alt="Customer original artwork"
+                      draggable={false}
+                      className="max-w-full max-h-full object-contain absolute pointer-events-none z-10"
+                      style={artworkStyle}
+                    />
+                  ) : (
+                    <div className="max-w-md text-center text-black/35 px-6">
+                      <div className="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-2xl border border-[#cda45e]/35 bg-white/85 text-xl text-[#8a5a14] shadow-[0_8px_20px_rgba(79,58,24,.10)]">
+                        ▧
+                      </div>
+                      <b className="text-base text-black/55">Upload a photo to start</b>
+                      <p className="mt-1 text-sm leading-6">
+                        We place it inside the 16.5″ × 7.5″ photo area. AI Expand can then complete the full 16.5″ × 11″ artwork.
+                      </p>
+                    </div>
+                  )}
 
-                {view !== "review" && (
-                  <TextLayersOverlay
-                    layers={textLayers}
-                    onPointerDown={textPointerDown}
-                    selectedId={selectedTextId}
-                  />
-                )}
+                  {view === "editor" && image && !flattenedArtwork && (
+                    <div className="pointer-events-none absolute bottom-3 left-1/2 z-30 -translate-x-1/2 rounded-full bg-black/70 px-3 py-1.5 text-[11px] font-semibold text-white shadow-lg xl:hidden">
+                      Drag · Pinch to resize · Twist to rotate
+                    </div>
+                  )}
+
+                  {view !== "review" && (
+                    <TextLayersOverlay
+                      layers={textLayers}
+                      onPointerDown={textPointerDown}
+                      selectedId={selectedTextId}
+                    />
+                  )}
+                </div>
               </div>
 
               {(view === "editor" || view === "review") && <TrayReference />}
