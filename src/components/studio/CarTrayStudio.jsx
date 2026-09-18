@@ -66,7 +66,7 @@ function TextLayersOverlay({ layers, onPointerDown, selectedId }) {
     </svg>
   );
 }
-function TrayReference({ showGuide = true }) {
+function TrayReference() {
   return (
     <svg
       viewBox="0 0 1700 1150"
@@ -79,19 +79,6 @@ function TrayReference({ showGuide = true }) {
         strokeWidth="5"
         vectorEffect="non-scaling-stroke"
       />
-      {showGuide && (
-        <rect
-          x="25"
-          y="25"
-          width="1650"
-          height="1100"
-          fill="none"
-          stroke="#8b6a2b"
-          strokeWidth="4"
-          strokeDasharray="18 14"
-          vectorEffect="non-scaling-stroke"
-        />
-      )}
     </svg>
   );
 }
@@ -680,7 +667,7 @@ export default function CarTrayStudio() {
               >
                 {view === "editor" && image && !flattenedArtwork && (
                   <div
-                    className="absolute inset-x-0 z-[6] border-y border-dashed border-[#a97924]/80 pointer-events-none"
+                    className="absolute inset-x-0 z-[6] bg-[#a97924]/[0.025] pointer-events-none"
                     style={{
                       height: `${INITIAL_PHOTO_AREA.heightPct}%`,
                       top: `${INITIAL_PHOTO_AREA.centerYPct}%`,
@@ -727,8 +714,8 @@ export default function CarTrayStudio() {
                 />
               </div>
 
-              {view === "editor" && <TrayReference showGuide />}
-              {view === "product" && <TrayReference showGuide={false} />}
+              {view === "editor" && <TrayReference />}
+              {view === "product" && <TrayReference />}
 
               {view === "print" && (
                 <div className="absolute inset-0 z-40 bg-white flex items-center justify-center">
@@ -959,9 +946,16 @@ export default function CarTrayStudio() {
                       onChange={(e) => updateText({ fontFamily: e.target.value }, true)}
                       className="w-full rounded-lg border border-black/10 bg-white p-2"
                     >
-                      <option>Arial</option>
-                      <option>Georgia</option>
-                      <option>Impact</option>
+                      <option value="Arial">Arial</option>
+                      <option value="'Arial Black', Arial, sans-serif">Arial Black</option>
+                      <option value="Georgia, serif">Georgia</option>
+                      <option value="Impact, Haettenschweiler, sans-serif">Impact</option>
+                      <option value="'Trebuchet MS', Arial, sans-serif">Trebuchet</option>
+                      <option value="Verdana, Geneva, sans-serif">Verdana</option>
+                      <option value="'Times New Roman', Times, serif">Times New Roman</option>
+                      <option value="'Courier New', Courier, monospace">Courier New</option>
+                      <option value="'Brush Script MT', cursive">Brush Script</option>
+                      <option value="Copperplate, 'Copperplate Gothic Light', fantasy">Copperplate</option>
                     </select>
                     <label className="block text-sm">
                       Size <b className="float-right">{selectedText.size}%</b>
@@ -987,6 +981,29 @@ export default function CarTrayStudio() {
                         onPointerUp={commitTextPreview}
                       />
                     </label>
+                    <div className="grid grid-cols-3 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => updateText({ rotation: Math.max(-180, selectedText.rotation - 15) }, true)}
+                        className="rounded-lg border border-black/10 bg-white px-2 py-2 text-sm font-semibold hover:bg-[#f1eadf]"
+                      >
+                        ↺ 15°
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => updateText({ rotation: 0 }, true)}
+                        className="rounded-lg border border-black/10 bg-white px-2 py-2 text-sm font-semibold hover:bg-[#f1eadf]"
+                      >
+                        0°
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => updateText({ rotation: Math.min(180, selectedText.rotation + 15) }, true)}
+                        className="rounded-lg border border-black/10 bg-white px-2 py-2 text-sm font-semibold hover:bg-[#f1eadf]"
+                      >
+                        15° ↻
+                      </button>
+                    </div>
                     <label className="flex items-center justify-between text-sm">
                       Color
                       <input
@@ -1031,7 +1048,7 @@ export default function CarTrayStudio() {
                 <span>Final AI / print</span><b>16.5″ × 11″</b>
                 <span>Physical tray</span><b>17″ × 11.5″</b>
               </div>
-              <p className="mt-2 text-black/40">Tray outline and guides never print.</p>
+              <p className="mt-2 text-black/40">Tray outline never prints.</p>
             </div>
           </div>
         </aside>
