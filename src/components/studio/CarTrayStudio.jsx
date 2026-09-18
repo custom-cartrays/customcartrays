@@ -546,9 +546,9 @@ export default function CarTrayStudio() {
         : null,
     quality = qualityFromDpi(dpi);
   return (
-    <div className="min-h-screen bg-[#f3f0e8] text-[#181716]">
-      <header className="sticky top-0 z-50 border-b border-black/10 bg-white/95 backdrop-blur">
-        <div className="h-[72px] px-4 lg:px-6 flex items-center gap-4">
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(202,145,47,.12),_transparent_28%),linear-gradient(180deg,#f8f5ef_0%,#eee8de_100%)] text-[#181716]">
+      <header className="sticky top-0 z-50 border-b border-[#d8c39b]/60 bg-[rgba(255,253,249,.94)] shadow-[0_8px_30px_rgba(44,34,20,.06)] backdrop-blur-xl">
+        <div className="mx-auto flex h-[76px] w-full max-w-[1540px] items-center gap-5 px-4 lg:px-7">
           <button
             onClick={() => router.push("/")}
             className="shrink-0 flex items-center gap-3 text-left"
@@ -557,13 +557,13 @@ export default function CarTrayStudio() {
             <img
               src="/custom-car-trays-logo.png"
               alt="Custom Car Trays"
-              className="h-12 w-[112px] object-cover rounded-lg border border-black/10 bg-white shadow-sm"
+              className="h-12 w-[126px] object-contain drop-shadow-[0_4px_10px_rgba(0,0,0,.16)]"
             />
           </button>
 
-          <div className="hidden md:flex flex-1 items-center justify-center gap-7 text-sm">
+          <div className="hidden md:flex flex-1 items-center justify-center gap-6 text-sm">
             <div className="flex items-center gap-2 font-bold">
-              <span className="grid h-8 w-8 place-items-center rounded-full bg-[#171717] text-white">1</span>
+              <span className="grid h-8 w-8 place-items-center rounded-full bg-[#171717] text-white ring-4 ring-[#d9a44b]/15">1</span>
               <span>Design Your Tray</span>
             </div>
             <div className="h-px w-10 bg-black/10" />
@@ -581,26 +581,36 @@ export default function CarTrayStudio() {
           <button
             onClick={add}
             disabled={!image || saving}
-            className="ml-auto rounded-xl bg-[#171717] px-5 py-3 font-bold text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md disabled:translate-y-0 disabled:cursor-not-allowed disabled:bg-black/25 disabled:shadow-none"
+            className="ml-auto rounded-2xl bg-[#171717] px-6 py-3 font-bold text-white shadow-[0_8px_22px_rgba(0,0,0,.18)] transition hover:-translate-y-0.5 hover:bg-black hover:shadow-[0_10px_26px_rgba(0,0,0,.22)] disabled:translate-y-0 disabled:cursor-not-allowed disabled:bg-black/25 disabled:shadow-none"
           >
             {saving ? "Saving…" : "Continue →"}
           </button>
         </div>
       </header>
 
-      <main className="grid min-h-[calc(100vh-72px)] xl:grid-cols-[92px_minmax(0,1fr)_320px]">
-        <aside className="order-2 xl:order-none border-t xl:border-t-0 xl:border-r border-black/10 bg-white px-2 py-3 flex xl:flex-col items-center gap-2 overflow-x-auto">
+      <main className="mx-auto grid min-h-[calc(100vh-76px)] w-full max-w-[1540px] gap-0 px-0 xl:grid-cols-[100px_minmax(760px,980px)_320px] xl:justify-center xl:gap-4 xl:px-4">
+        <aside className="order-2 flex items-center gap-2 overflow-x-auto border-t border-black/10 bg-white/90 px-2 py-3 shadow-sm xl:order-none xl:my-5 xl:h-fit xl:flex-col xl:rounded-[26px] xl:border xl:border-[#d9c9ad]/70 xl:bg-[rgba(255,253,249,.92)] xl:px-2.5 xl:py-3.5 xl:shadow-[0_14px_35px_rgba(45,36,23,.08)] xl:backdrop-blur">
           <button
             onClick={() => setActiveTool("ai")}
-            className={`min-w-[76px] rounded-2xl px-2 py-3 text-xs flex flex-col items-center gap-1.5 transition ${activeTool === "ai" ? "bg-[#f1eadf] font-bold shadow-sm" : "hover:bg-[#f5f1ea]"}`}
+            className={`min-w-[78px] rounded-2xl px-2 py-3 text-xs flex flex-col items-center gap-1.5 transition ${activeTool === "ai" ? "bg-[#171717] text-white font-bold shadow-[0_8px_18px_rgba(0,0,0,.16)]" : "hover:bg-[#f3eadc]"}`}
           >
             <span className="text-2xl leading-none">✦</span>
             AI
           </button>
           <button
+            onClick={() => {
+              setActiveTool("upload");
+              fileRef.current?.click();
+            }}
+            className={`min-w-[78px] rounded-2xl px-2 py-3 text-xs flex flex-col items-center gap-1.5 transition ${activeTool === "upload" ? "bg-[#f1eadf] font-bold text-[#704a12] shadow-sm" : "hover:bg-[#f3eadc]"}`}
+          >
+            <span className="grid h-7 w-7 place-items-center rounded-lg border border-current/20 text-[15px] leading-none">▧</span>
+            Upload
+          </button>
+          <button
             onClick={() => setActiveTool("text")}
             disabled={!image}
-            className={`min-w-[76px] rounded-2xl px-2 py-3 text-xs flex flex-col items-center gap-1.5 transition disabled:opacity-30 ${activeTool === "text" ? "bg-[#f1eadf] font-bold shadow-sm" : "hover:bg-[#f5f1ea]"}`}
+            className={`min-w-[78px] rounded-2xl px-2 py-3 text-xs flex flex-col items-center gap-1.5 transition disabled:opacity-30 ${activeTool === "text" ? "bg-[#f1eadf] font-bold text-[#704a12] shadow-sm" : "hover:bg-[#f3eadc]"}`}
           >
             <span className="text-2xl leading-none font-serif">T</span>
             Add Text
@@ -611,14 +621,14 @@ export default function CarTrayStudio() {
           <button
             onClick={undo}
             disabled={!historyIndex}
-            className="min-w-[76px] rounded-xl px-2 py-2.5 text-xs hover:bg-[#f5f1ea] disabled:opacity-25"
+            className="min-w-[78px] rounded-xl px-2 py-2.5 text-xs font-medium hover:bg-[#f3eadc] disabled:opacity-25"
           >
             ↶ Undo
           </button>
           <button
             onClick={redo}
             disabled={historyIndex >= history.length - 1}
-            className="min-w-[76px] rounded-xl px-2 py-2.5 text-xs hover:bg-[#f5f1ea] disabled:opacity-25"
+            className="min-w-[78px] rounded-xl px-2 py-2.5 text-xs font-medium hover:bg-[#f3eadc] disabled:opacity-25"
           >
             ↷ Redo
           </button>
@@ -631,8 +641,8 @@ export default function CarTrayStudio() {
           />
         </aside>
 
-        <section className="order-1 xl:order-none min-w-0 flex flex-col bg-[#f6f3ed]">
-          <div className="px-4 pt-4 md:px-6 flex items-center justify-between text-[11px] uppercase tracking-[0.12em] text-black/45">
+        <section className="order-1 min-w-0 flex flex-col bg-transparent xl:order-none">
+          <div className="flex items-center justify-between px-4 pt-5 text-[11px] uppercase tracking-[0.16em] text-black/40 md:px-3">
             <span>
               {view === "editor" ? "Editor View" : "Print File"}
             </span>
@@ -641,14 +651,14 @@ export default function CarTrayStudio() {
             </b>
           </div>
 
-          <div className="flex-1 p-3 md:p-6 flex items-center justify-center">
+          <div className="flex flex-1 items-center justify-center p-3 md:px-2 md:py-5">
             <div
               ref={workspaceRef}
               onPointerDown={pointerDown}
               onPointerMove={pointerMove}
               onPointerUp={pointerUp}
               onPointerCancel={pointerUp}
-              className={`relative w-full max-w-[980px] ${view === "print" ? "aspect-[16.5/11] rounded-none border-0 bg-white shadow-none" : "aspect-[17/11.5] rounded-[22px] border-0 bg-[#efe8dc] shadow-[0_18px_50px_rgba(45,36,23,.12)]"} overflow-hidden select-none touch-none`}
+              className={`relative w-full max-w-[980px] ${view === "print" ? "aspect-[16.5/11] rounded-[18px] border border-black/5 bg-white shadow-[0_18px_48px_rgba(45,36,23,.10)]" : "aspect-[17/11.5] rounded-[30px] border border-[#d6c19b]/55 bg-[#efe8dc] shadow-[0_24px_70px_rgba(45,36,23,.15)]"} overflow-hidden select-none touch-none`}
             >
               <div
                 ref={designAreaRef}
@@ -696,8 +706,8 @@ export default function CarTrayStudio() {
                   />
                 ) : (
                   <div className="max-w-md text-center text-black/35 px-6">
-                    <div className="mx-auto mb-4 grid h-12 w-12 place-items-center rounded-2xl border border-black/10 bg-white text-xl shadow-sm">
-                      ◫
+                    <div className="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-2xl border border-[#cda45e]/35 bg-white/85 text-xl text-[#8a5a14] shadow-[0_8px_20px_rgba(79,58,24,.10)]">
+                      ▧
                     </div>
                     <b className="text-base text-black/55">Upload a photo to start</b>
                     <p className="mt-1 text-sm leading-6">
@@ -734,7 +744,7 @@ export default function CarTrayStudio() {
             </div>
           </div>
 
-          <div className="border-t border-black/10 bg-white px-3 py-3 md:px-4 flex items-center gap-2 overflow-x-auto">
+          <div className="mx-2 mb-4 flex items-center gap-2 overflow-x-auto rounded-[22px] border border-[#d8cbb7]/70 bg-[rgba(255,253,249,.90)] px-3 py-3 shadow-[0_10px_28px_rgba(45,36,23,.06)] backdrop-blur md:px-4">
             {[
               ["editor", "Editor", "Edit positioning and text"],
               ["print", "Print File", "4950 × 3300 · artwork only"],
@@ -746,7 +756,7 @@ export default function CarTrayStudio() {
                   id === "print" &&
                   (expanding || !productionReady || renderingPrint)
                 }
-                className={`min-w-[150px] rounded-2xl border px-3 py-2.5 text-left transition disabled:opacity-35 ${view === id ? "border-[#a86f16] bg-[#fbf3e6] shadow-sm" : "border-black/10 bg-white hover:bg-[#faf8f4]"}`}
+                className={`min-w-[150px] rounded-2xl border px-3 py-2.5 text-left transition disabled:opacity-35 ${view === id ? "border-[#a86f16] bg-[#fff7ea] shadow-[0_5px_14px_rgba(168,111,22,.10)]" : "border-black/10 bg-white/80 hover:bg-[#faf3e8]"}`}
               >
                 <span className="block text-sm font-bold">
                   {id === "print" && !productionReady && image ? "Preparing Print…" : label}
@@ -774,13 +784,13 @@ export default function CarTrayStudio() {
           </div>
         </section>
 
-        <aside className="order-3 border-t xl:border-t-0 xl:border-l border-black/10 bg-white p-4 md:p-5">
-          <div className="sticky top-[92px] space-y-4">
+        <aside className="order-3 bg-transparent p-3 md:p-4 xl:my-5 xl:p-0">
+          <div className="sticky top-[96px] space-y-4 rounded-[26px] border border-[#d7c8ad]/70 bg-[rgba(255,253,249,.96)] p-5 shadow-[0_16px_40px_rgba(45,36,23,.10)] backdrop-blur">
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-black/35">
+              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#9a6a1e]">
                 {activeTool === "ai" ? "AI Tools" : activeTool === "text" ? "Text" : "Image"}
               </p>
-              <h2 className="mt-1 text-xl font-black tracking-tight">
+              <h2 className="mt-1 text-[22px] font-black tracking-[-0.03em] text-[#171717]">
                 {activeTool === "ai"
                   ? image
                     ? "Complete your artwork"
@@ -797,13 +807,13 @@ export default function CarTrayStudio() {
               <>
                 <button
                   onClick={() => fileRef.current?.click()}
-                  className="w-full rounded-xl bg-[#171717] py-3.5 font-bold text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+                  className="w-full rounded-2xl bg-[#171717] py-3.5 font-bold text-white shadow-[0_8px_18px_rgba(0,0,0,.16)] transition hover:-translate-y-0.5 hover:shadow-[0_10px_22px_rgba(0,0,0,.20)]"
                 >
                   {image ? "Replace Image" : "Upload Image"}
                 </button>
 
                 {image && !flattenedArtwork && (
-                  <div className="rounded-2xl border border-black/10 bg-[#faf8f4] p-4 space-y-4">
+                  <div className="rounded-2xl border border-[#dacbb4]/70 bg-[#fbf8f2] p-4 space-y-4 shadow-inner">
                     <label className="block text-sm">
                       <span className="flex justify-between font-semibold">
                         <span>Scale</span><b>{scale}%</b>
@@ -877,12 +887,12 @@ export default function CarTrayStudio() {
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
                   placeholder="Describe a complete 16.5″ × 11″ design…"
-                  className="h-28 w-full rounded-2xl border border-black/10 bg-[#faf8f4] p-3 outline-none transition focus:border-[#a86f16] focus:ring-2 focus:ring-[#a86f16]/10"
+                  className="h-28 w-full rounded-2xl border border-[#d8cbb7] bg-white/90 p-3 outline-none transition focus:border-[#a86f16] focus:ring-4 focus:ring-[#a86f16]/10"
                 />
                 <button
                   onClick={generate}
                   disabled={loading || !prompt.trim()}
-                  className="w-full rounded-xl bg-[#171717] py-3.5 font-bold text-white shadow-sm disabled:opacity-35"
+                  className="w-full rounded-2xl bg-[#171717] py-3.5 font-bold text-white shadow-[0_8px_18px_rgba(0,0,0,.16)] transition hover:-translate-y-0.5 hover:shadow-[0_10px_22px_rgba(0,0,0,.20)] disabled:translate-y-0 disabled:opacity-35"
                 >
                   {loading ? "Generating…" : "✦ Generate with AI"}
                 </button>
@@ -893,19 +903,19 @@ export default function CarTrayStudio() {
               <>
                 {!flattenedArtwork ? (
                   <>
-                    <div className="rounded-2xl border border-[#d8c7aa] bg-[#fbf4e8] p-3 text-xs leading-5 text-[#6f5426]">
+                    <div className="rounded-2xl border border-[#d1a85f]/55 bg-[linear-gradient(135deg,#fff8ec,#f7ead4)] p-3 text-xs leading-5 text-[#6f5426] shadow-sm">
                       Your photo stays inside the 16.5″ × 7.5″ placement area. AI fills the rest of the 16.5″ × 11″ artwork.
                     </div>
                     <textarea
                       value={expandPrompt}
                       onChange={(e) => setExpandPrompt(e.target.value)}
                       placeholder="Optional direction, e.g. continue this scene naturally…"
-                      className="h-24 w-full rounded-2xl border border-black/10 bg-[#faf8f4] p-3 outline-none transition focus:border-[#a86f16] focus:ring-2 focus:ring-[#a86f16]/10"
+                      className="h-24 w-full rounded-2xl border border-[#d8cbb7] bg-white/90 p-3 outline-none transition focus:border-[#a86f16] focus:ring-4 focus:ring-[#a86f16]/10"
                     />
                     <button
                       onClick={expand}
                       disabled={expanding}
-                      className="w-full rounded-xl bg-[#171717] py-3.5 font-bold text-white shadow-sm disabled:opacity-35"
+                      className="w-full rounded-2xl bg-[#171717] py-3.5 font-bold text-white shadow-[0_8px_18px_rgba(0,0,0,.16)] transition hover:-translate-y-0.5 hover:shadow-[0_10px_22px_rgba(0,0,0,.20)] disabled:translate-y-0 disabled:opacity-35"
                     >
                       {expanding ? "✦ Expanding…" : "✦ AI Expand Background"}
                     </button>
@@ -930,7 +940,7 @@ export default function CarTrayStudio() {
                   Add Text Layer
                 </button>
                 {selectedText && (
-                  <div className="rounded-2xl border border-black/10 bg-[#faf8f4] p-4 space-y-3">
+                  <div className="rounded-2xl border border-[#dacbb4]/70 bg-[#fbf8f2] p-4 space-y-3 shadow-inner">
                     <b className="text-sm">Text layer</b>
                     <input
                       value={selectedText.text}
@@ -1027,7 +1037,7 @@ export default function CarTrayStudio() {
               </div>
             )}
 
-            <div className="rounded-2xl border border-black/10 bg-[#faf8f4] p-4 text-xs leading-5 text-black/55">
+            <div className="rounded-2xl border border-[#dacbb4]/70 bg-[#fbf8f2] p-4 text-xs leading-5 text-black/55">
               <b className="text-black/80">Artwork geometry</b>
               <div className="mt-2 grid grid-cols-[1fr_auto] gap-x-3 gap-y-1">
                 <span>Photo placement</span><b>16.5″ × 7.5″</b>
