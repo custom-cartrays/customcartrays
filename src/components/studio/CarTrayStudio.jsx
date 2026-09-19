@@ -790,14 +790,6 @@ export default function CarTrayStudio() {
       <main className="mx-auto grid min-h-[calc(100vh-76px)] w-full max-w-[1540px] gap-0 px-0 xl:grid-cols-[100px_minmax(760px,980px)_320px] xl:justify-center xl:gap-4 xl:px-4">
         <aside className={`order-2 flex items-center gap-2 overflow-x-auto border-t border-black/10 bg-white/90 px-2 py-3 shadow-sm xl:order-none xl:my-5 xl:h-fit xl:flex-col xl:rounded-[26px] xl:border xl:border-[#d9c9ad]/70 xl:bg-[rgba(255,253,249,.92)] xl:px-2.5 xl:py-3.5 xl:shadow-[0_14px_35px_rgba(45,36,23,.08)] xl:backdrop-blur ${view === "review" ? "pointer-events-none opacity-35" : ""}`}>
           <button
-            onClick={() => openMobileTool("ai")}
-            className={`min-w-[78px] rounded-2xl px-2 py-3 text-xs flex flex-col items-center gap-1.5 transition ${activeTool === "ai" ? "bg-[#171717] text-white font-bold shadow-[0_8px_18px_rgba(0,0,0,.16)]" : "hover:bg-[#f3eadc]"}`}
-          >
-            <span className="text-2xl leading-none">✦</span>
-            <span className="xl:hidden">AI Expand</span>
-            <span className="hidden xl:inline">AI</span>
-          </button>
-          <button
             onClick={() => {
               setActiveTool("upload");
               fileRef.current?.click();
@@ -814,6 +806,14 @@ export default function CarTrayStudio() {
           >
             <span className="text-2xl leading-none font-serif">T</span>
             Add Text
+          </button>
+          <button
+            onClick={() => openMobileTool("ai")}
+            className={`min-w-[78px] rounded-2xl px-2 py-3 text-xs flex flex-col items-center gap-1.5 transition ${activeTool === "ai" ? "bg-[#171717] text-white font-bold shadow-[0_8px_18px_rgba(0,0,0,.16)]" : "hover:bg-[#f3eadc]"}`}
+          >
+            <span className="text-2xl leading-none">✦</span>
+            <span className="xl:hidden">AI Expand</span>
+            <span className="hidden xl:inline">AI</span>
           </button>
 
           <div className="hidden xl:block my-1 h-px w-12 bg-black/10" />
