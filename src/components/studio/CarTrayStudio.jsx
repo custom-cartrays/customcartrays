@@ -23,22 +23,6 @@ const initialEditorState = () => ({
   appliedExpandPrompt: "",
   textLayers: [],
 });
-const TRAY_PATH_D =
-  "M92 1135 Q28 1125 28 1038 L28 118 Q28 16 120 16 L476 16 Q505 16 505 50 L505 136 Q505 181 462 181 Q426 181 381 151 Q347 130 315 151 Q280 174 280 225 L280 282 Q280 354 353 354 Q486 307 850 307 Q1214 307 1347 354 Q1420 354 1420 282 L1420 225 Q1420 174 1385 151 Q1353 130 1319 151 Q1274 181 1238 181 Q1195 181 1195 136 L1195 50 Q1195 16 1224 16 L1580 16 Q1672 16 1672 118 L1672 1038 Q1672 1125 1608 1135 Q850 1150 92 1135 Z",
-  TRAY_MASK_URL = `url("data:image/svg+xml,${encodeURIComponent(
-    `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1700 1150' preserveAspectRatio='none'><path d='${TRAY_PATH_D}' fill='white'/></svg>`,
-  )}")`,
-  trayMaskStyle = {
-    WebkitMaskImage: TRAY_MASK_URL,
-    maskImage: TRAY_MASK_URL,
-    WebkitMaskRepeat: "no-repeat",
-    maskRepeat: "no-repeat",
-    WebkitMaskSize: "100% 100%",
-    maskSize: "100% 100%",
-    WebkitMaskPosition: "center",
-    maskPosition: "center",
-  };
-
 const loadImage = (src) =>
   new Promise((res, rej) => {
     const im = new Image();
@@ -89,7 +73,7 @@ function TrayReference() {
       className="absolute inset-0 w-full h-full pointer-events-none z-30"
     >
       <path
-        d={TRAY_PATH_D}
+        d="M92 1135 Q28 1125 28 1038 L28 118 Q28 16 120 16 L476 16 Q505 16 505 50 L505 136 Q505 181 462 181 Q426 181 381 151 Q347 130 315 151 Q280 174 280 225 L280 282 Q280 354 353 354 Q486 307 850 307 Q1214 307 1347 354 Q1420 354 1420 282 L1420 225 Q1420 174 1385 151 Q1353 130 1319 151 Q1274 181 1238 181 Q1195 181 1195 136 L1195 50 Q1195 16 1224 16 L1580 16 Q1672 16 1672 118 L1672 1038 Q1672 1125 1608 1135 Q850 1150 92 1135 Z"
         fill="rgba(246,239,226,.18)"
         stroke="#171717"
         strokeWidth="5"
@@ -105,9 +89,6 @@ export default function CarTrayStudio() {
     workspaceRef = useRef(null),
     designAreaRef = useRef(null),
     dragRef = useRef(null),
-    gestureRef = useRef(null),
-    pointersRef = useRef(new Map()),
-    toolPanelRef = useRef(null),
     transformRef = useRef(initialTransform),
     textLayersRef = useRef([]);
   const [image, setImage] = useState(""),
@@ -116,6 +97,7 @@ export default function CarTrayStudio() {
     [sourceSize, setSourceSize] = useState(null),
     [prompt, setPrompt] = useState(""),
     [expandPrompt, setExpandPrompt] = useState(""),
+    [showAdvancedExpand, setShowAdvancedExpand] = useState(false),
     [appliedExpandInstruction, setAppliedExpandInstruction] = useState(""),
     [appliedExpandPrompt, setAppliedExpandPrompt] = useState(""),
     [printPreview, setPrintPreview] = useState(""),
@@ -233,6 +215,8 @@ export default function CarTrayStudio() {
     if (remember) setOriginalImage(src);
     setActiveTool("upload");
     setView("editor");
+    setExpandPrompt("");
+    setShowAdvancedExpand(false);
     setError("");
     const clean = initialEditorState();
     applySnapshot(clean);
@@ -248,6 +232,8 @@ export default function CarTrayStudio() {
     setOriginalImage("");
     setActiveTool("ai");
     setView("editor");
+    setExpandPrompt("");
+    setShowAdvancedExpand(false);
     setError("");
     const clean = { ...initialEditorState(), flattenedArtwork: src };
     applySnapshot(clean);
@@ -572,61 +558,14 @@ export default function CarTrayStudio() {
           y: clamp(y + dy, 0, 100),
         });
     },
-    pointerDistance = (a, b) =>
-      Math.hypot(b.x - a.x, b.y - a.y),
-    pointerAngle = (a, b) =>
-      (Math.atan2(b.y - a.y, b.x - a.x) * 180) / Math.PI,
-    pointerMidpoint = (a, b) => ({
-      x: (a.x + b.x) / 2,
-      y: (a.y + b.y) / 2,
-    }),
-    normalizeRotation = (value) => {
-      let out = value % 360;
-      if (out > 180) out -= 360;
-      if (out < -180) out += 360;
-      return out;
-    },
-    openMobileTool = (tool) => {
-      setActiveTool(tool);
-      if (typeof window !== "undefined" && window.innerWidth < 1280) {
-        requestAnimationFrame(() =>
-          toolPanelRef.current?.scrollIntoView({
-            behavior: "smooth",
-            block: "start",
-          }),
-        );
-      }
-    },
     pointerDown = (e) => {
       if (!image || flattenedArtwork || view !== "editor") return;
       e.currentTarget.setPointerCapture?.(e.pointerId);
-
-      if (e.pointerType === "touch") {
-        pointersRef.current.set(e.pointerId, {
-          x: e.clientX,
-          y: e.clientY,
-        });
-        const points = [...pointersRef.current.values()];
-        if (points.length >= 2) {
-          const [a, b] = points;
-          gestureRef.current = {
-            start: { ...transformRef.current },
-            distance: Math.max(1, pointerDistance(a, b)),
-            angle: pointerAngle(a, b),
-            midpoint: pointerMidpoint(a, b),
-            moved: false,
-          };
-          dragRef.current = null;
-          return;
-        }
-      }
-
       dragRef.current = {
         kind: "image",
-        pointerId: e.pointerId,
         sx: e.clientX,
         sy: e.clientY,
-        start: { ...transformRef.current },
+        start: transform,
         moved: false,
       };
     },
@@ -638,7 +577,6 @@ export default function CarTrayStudio() {
       dragRef.current = {
         kind: "text",
         id,
-        pointerId: e.pointerId,
         sx: e.clientX,
         sy: e.clientY,
         start: textLayersRef.current.find((layer) => layer.id === id),
@@ -646,39 +584,8 @@ export default function CarTrayStudio() {
       };
     },
     pointerMove = (e) => {
-      if (!designAreaRef.current) return;
-
-      if (e.pointerType === "touch" && pointersRef.current.has(e.pointerId)) {
-        pointersRef.current.set(e.pointerId, {
-          x: e.clientX,
-          y: e.clientY,
-        });
-        const points = [...pointersRef.current.values()],
-          g = gestureRef.current;
-        if (g && points.length >= 2) {
-          const [a, b] = points,
-            r = designAreaRef.current.getBoundingClientRect(),
-            distance = Math.max(1, pointerDistance(a, b)),
-            angle = pointerAngle(a, b),
-            midpoint = pointerMidpoint(a, b),
-            scaleRatio = distance / g.distance,
-            dx = ((midpoint.x - g.midpoint.x) / r.width) * 100,
-            dy = ((midpoint.y - g.midpoint.y) / r.height) * 100;
-
-          g.moved = true;
-          previewTransform({
-            ...g.start,
-            scale: clamp(g.start.scale * scaleRatio, 20, 180),
-            rot: normalizeRotation(g.start.rot + (angle - g.angle)),
-            x: clamp(g.start.x + dx, 0, 100),
-            y: clamp(g.start.y + dy, 0, 100),
-          });
-          return;
-        }
-      }
-
       const d = dragRef.current;
-      if (!d) return;
+      if (!d || !designAreaRef.current) return;
       const r = designAreaRef.current.getBoundingClientRect(),
         dx = ((e.clientX - d.sx) / r.width) * 100,
         dy = ((e.clientY - d.sy) / r.height) * 100;
@@ -697,25 +604,14 @@ export default function CarTrayStudio() {
         );
         return;
       }
-      previewTransform({
+      const next = {
         ...d.start,
         x: clamp(d.start.x + dx, 0, 100),
         y: clamp(d.start.y + dy, 0, 100),
-      });
+      };
+      previewTransform(next);
     },
-    pointerUp = (e) => {
-      if (e?.pointerType === "touch") {
-        pointersRef.current.delete(e.pointerId);
-        const g = gestureRef.current;
-        if (g) {
-          if (g.moved) commitTransform(transformRef.current);
-          gestureRef.current = null;
-          dragRef.current = null;
-          pointersRef.current.clear();
-          return;
-        }
-      }
-
+    pointerUp = () => {
       const d = dragRef.current;
       if (!d) return;
       dragRef.current = null;
@@ -800,7 +696,7 @@ export default function CarTrayStudio() {
             Upload
           </button>
           <button
-            onClick={() => openMobileTool("text")}
+            onClick={() => setActiveTool("text")}
             disabled={!image}
             className={`min-w-[78px] rounded-2xl px-2 py-3 text-xs flex flex-col items-center gap-1.5 transition disabled:opacity-30 ${activeTool === "text" ? "bg-[#f1eadf] font-bold text-[#704a12] shadow-sm" : "hover:bg-[#f3eadc]"}`}
           >
@@ -808,12 +704,11 @@ export default function CarTrayStudio() {
             Add Text
           </button>
           <button
-            onClick={() => openMobileTool("ai")}
+            onClick={() => setActiveTool("ai")}
             className={`min-w-[78px] rounded-2xl px-2 py-3 text-xs flex flex-col items-center gap-1.5 transition ${activeTool === "ai" ? "bg-[#171717] text-white font-bold shadow-[0_8px_18px_rgba(0,0,0,.16)]" : "hover:bg-[#f3eadc]"}`}
           >
             <span className="text-2xl leading-none">✦</span>
-            <span className="xl:hidden">AI Expand</span>
-            <span className="hidden xl:inline">AI</span>
+            AI Expand
           </button>
 
           <div className="hidden xl:block my-1 h-px w-12 bg-black/10" />
@@ -861,86 +756,65 @@ export default function CarTrayStudio() {
               className={`relative w-full max-w-[980px] ${view === "print" ? "aspect-[16.5/11] rounded-[18px] border border-black/5 bg-white shadow-[0_18px_48px_rgba(45,36,23,.10)]" : "aspect-[17/11.5] rounded-[30px] border border-[#d6c19b]/55 bg-[#efe8dc] shadow-[0_24px_70px_rgba(45,36,23,.15)]"} overflow-hidden select-none touch-none`}
             >
               <div
-                className="absolute inset-0 z-0"
-                style={view === "print" ? undefined : trayMaskStyle}
+                ref={designAreaRef}
+                className={`${view === "print" ? "absolute inset-0" : "absolute"} z-0 overflow-hidden bg-[#efe8dc] flex items-center justify-center`}
+                style={
+                  view === "print"
+                    ? undefined
+                    : {
+                        left: `${DESIGN_AREA_UI.leftPct}%`,
+                        top: `${DESIGN_AREA_UI.topPct}%`,
+                        width: `${DESIGN_AREA_UI.widthPct}%`,
+                        height: `${DESIGN_AREA_UI.heightPct}%`,
+                      }
+                }
               >
-                <div
-                  ref={designAreaRef}
-                  className={`${view === "print" ? "absolute inset-0 overflow-hidden" : "absolute overflow-visible"} bg-[#efe8dc] flex items-center justify-center`}
-                  style={
-                    view === "print"
-                      ? undefined
-                      : {
-                          left: `${DESIGN_AREA_UI.leftPct}%`,
-                          top: `${DESIGN_AREA_UI.topPct}%`,
-                          width: `${DESIGN_AREA_UI.widthPct}%`,
-                          height: `${DESIGN_AREA_UI.heightPct}%`,
-                        }
-                  }
-                >
-                  {view === "editor" && image && !flattenedArtwork && (
-                    <div
-                      className="absolute inset-x-0 z-[6] bg-[#a97924]/[0.025] pointer-events-none"
-                      style={{
-                        height: `${INITIAL_PHOTO_AREA.heightPct}%`,
-                        top: `${INITIAL_PHOTO_AREA.centerYPct}%`,
-                        transform: "translateY(-50%)",
-                      }}
-                    >
-                      <span className="absolute left-3 top-2 rounded-full bg-white/90 px-2.5 py-1 text-[10px] font-semibold text-[#7a561b] shadow-sm">
-                        Photo area · 16.5″ × 7.5″
-                      </span>
-                    </div>
-                  )}
+                {view === "editor" && image && !flattenedArtwork && (
+                  <div
+                    className="absolute inset-x-0 z-[6] bg-[#a97924]/[0.025] pointer-events-none"
+                    style={{
+                      height: `${INITIAL_PHOTO_AREA.heightPct}%`,
+                      top: `${INITIAL_PHOTO_AREA.centerYPct}%`,
+                      transform: "translateY(-50%)",
+                    }}
+                  >
+                    <span className="absolute left-3 top-2 rounded-full bg-white/90 px-2.5 py-1 text-[10px] font-semibold text-[#7a561b] shadow-sm">
+                      Photo area · 16.5″ × 7.5″
+                    </span>
+                  </div>
+                )}
 
-                  {view === "review" && reviewPreview ? (
-                    <img
-                      src={reviewPreview}
-                      alt="Review artwork"
-                      draggable={false}
-                      className="absolute inset-0 h-full w-full object-fill pointer-events-none"
-                    />
-                  ) : flattenedArtwork ? (
-                    <img
-                      src={flattenedArtwork}
-                      alt="Flattened AI artwork"
-                      draggable={false}
-                      className="absolute inset-0 w-full h-full object-fill pointer-events-none"
-                    />
-                  ) : image ? (
-                    <img
-                      src={originalImage || image}
-                      alt="Customer original artwork"
-                      draggable={false}
-                      className="max-w-full max-h-full object-contain absolute pointer-events-none z-10"
-                      style={artworkStyle}
-                    />
-                  ) : (
-                    <div className="max-w-md text-center text-black/35 px-6">
-                      <div className="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-2xl border border-[#cda45e]/35 bg-white/85 text-xl text-[#8a5a14] shadow-[0_8px_20px_rgba(79,58,24,.10)]">
-                        ▧
-                      </div>
-                      <b className="text-base text-black/55">Upload a photo to start</b>
-                      <p className="mt-1 text-sm leading-6">
-                        We place it inside the 16.5″ × 7.5″ photo area. AI Expand can then complete the full 16.5″ × 11″ artwork.
-                      </p>
-                    </div>
-                  )}
+                {view === "review" && reviewPreview ? (
+                  <img
+                    src={reviewPreview}
+                    alt="Review artwork"
+                    draggable={false}
+                    className="absolute inset-0 h-full w-full object-fill pointer-events-none"
+                  />
+                ) : flattenedArtwork ? (
+                  <img
+                    src={flattenedArtwork}
+                    alt="Flattened AI artwork"
+                    draggable={false}
+                    className="absolute inset-0 w-full h-full object-fill pointer-events-none"
+                  />
+                ) : image ? (
+                  <img
+                    src={originalImage || image}
+                    alt="Customer original artwork"
+                    draggable={false}
+                    className="max-w-full max-h-full object-contain absolute pointer-events-none z-10"
+                    style={artworkStyle}
+                  />
+                ) : null}
 
-                  {view === "editor" && image && !flattenedArtwork && (
-                    <div className="pointer-events-none absolute bottom-3 left-1/2 z-30 -translate-x-1/2 rounded-full bg-black/70 px-3 py-1.5 text-[11px] font-semibold text-white shadow-lg xl:hidden">
-                      Drag · Pinch to resize · Twist to rotate
-                    </div>
-                  )}
-
-                  {view !== "review" && (
-                    <TextLayersOverlay
-                      layers={textLayers}
-                      onPointerDown={textPointerDown}
-                      selectedId={selectedTextId}
-                    />
-                  )}
-                </div>
+                {view !== "review" && (
+                  <TextLayersOverlay
+                    layers={textLayers}
+                    onPointerDown={textPointerDown}
+                    selectedId={selectedTextId}
+                  />
+                )}
               </div>
 
               {(view === "editor" || view === "review") && <TrayReference />}
@@ -963,20 +837,6 @@ export default function CarTrayStudio() {
               )}
             </div>
           </div>
-
-          {view === "editor" && image && !flattenedArtwork && (
-            <div className="px-3 pb-3 xl:hidden">
-              <button
-                onClick={() => openMobileTool("ai")}
-                className="w-full rounded-2xl bg-[#171717] px-4 py-4 text-base font-black text-white shadow-[0_10px_24px_rgba(0,0,0,.18)]"
-              >
-                ✦ AI Expand Background
-              </button>
-              <p className="mt-2 text-center text-xs text-black/45">
-                Position your photo first, then tap here to complete the 16.5″ × 11″ artwork.
-              </p>
-            </div>
-          )}
 
           <div className="mx-2 mb-4 flex items-center gap-2 overflow-x-auto rounded-[22px] border border-[#d8cbb7]/70 bg-[rgba(255,253,249,.90)] px-3 py-3 shadow-[0_10px_28px_rgba(45,36,23,.06)] backdrop-blur md:px-4">
             {view === "review" ? (
@@ -1047,7 +907,7 @@ export default function CarTrayStudio() {
           </div>
         </section>
 
-        <aside ref={toolPanelRef} className="order-3 scroll-mt-24 bg-transparent p-3 md:p-4 xl:my-5 xl:p-0">
+        <aside className="order-3 bg-transparent p-3 md:p-4 xl:my-5 xl:p-0">
           <div className="sticky top-[96px] space-y-4 rounded-[26px] border border-[#d7c8ad]/70 bg-[rgba(255,253,249,.96)] p-5 shadow-[0_16px_40px_rgba(45,36,23,.10)] backdrop-blur">
             {view === "review" ? (
               <>
@@ -1104,12 +964,7 @@ export default function CarTrayStudio() {
                 </button>
 
                 {image && !flattenedArtwork && (
-                  <>
-                    <div className="xl:hidden rounded-2xl border border-[#d1a85f]/55 bg-[linear-gradient(135deg,#fff8ec,#f7ead4)] p-4 text-sm text-[#684b1d] shadow-sm">
-                      <b className="block text-[#171717]">Touch controls</b>
-                      <p className="mt-1 leading-5">One finger moves the photo. Pinch with two fingers to resize. Twist with two fingers to rotate.</p>
-                    </div>
-                    <div className="hidden xl:block rounded-2xl border border-[#dacbb4]/70 bg-[#fbf8f2] p-4 space-y-4 shadow-inner">
+                  <div className="rounded-2xl border border-[#dacbb4]/70 bg-[#fbf8f2] p-4 space-y-4 shadow-inner">
                     <label className="block text-sm">
                       <span className="flex justify-between font-semibold">
                         <span>Scale</span><b>{scale}%</b>
@@ -1153,8 +1008,7 @@ export default function CarTrayStudio() {
                         <button className="rounded-lg border bg-white py-2 hover:bg-[#f1eadf]" onClick={() => nudge(2, 0)}>→</button>
                       </div>
                     </div>
-                    </div>
-                  </>
+                  </div>
                 )}
 
                 {image && (
@@ -1201,14 +1055,31 @@ export default function CarTrayStudio() {
                 {!flattenedArtwork ? (
                   <>
                     <div className="rounded-2xl border border-[#d1a85f]/55 bg-[linear-gradient(135deg,#fff8ec,#f7ead4)] p-3 text-xs leading-5 text-[#6f5426] shadow-sm">
-                      Your photo stays inside the 16.5″ × 7.5″ placement area. AI fills the rest of the 16.5″ × 11″ artwork.
+                      AI Expand automatically continues the original scene naturally. Your photo stays inside the 16.5″ × 7.5″ placement area, and AI fills the rest of the 16.5″ × 11″ artwork.
                     </div>
-                    <textarea
-                      value={expandPrompt}
-                      onChange={(e) => setExpandPrompt(e.target.value)}
-                      placeholder="Optional direction, e.g. continue this scene naturally…"
-                      className="h-24 w-full rounded-2xl border border-[#d8cbb7] bg-white/90 p-3 outline-none transition focus:border-[#a86f16] focus:ring-4 focus:ring-[#a86f16]/10"
-                    />
+                    <div className="rounded-2xl border border-[#dacbb4]/70 bg-[#fbf8f2] p-3 shadow-inner">
+                      <button
+                        type="button"
+                        onClick={() => setShowAdvancedExpand((v) => !v)}
+                        className="flex w-full items-center justify-between rounded-xl px-1 py-1 text-left text-sm font-semibold text-[#171717]"
+                      >
+                        <span>Advanced prompt (optional)</span>
+                        <span className="text-black/45">{showAdvancedExpand ? "Hide" : "Show"}</span>
+                      </button>
+                      {showAdvancedExpand && (
+                        <div className="mt-3 space-y-2">
+                          <p className="text-xs leading-5 text-black/55">
+                            Leave this blank for the default behavior. Use it only when you want to guide the continuation in a special way.
+                          </p>
+                          <textarea
+                            value={expandPrompt}
+                            onChange={(e) => setExpandPrompt(e.target.value)}
+                            placeholder="Optional custom direction, e.g. keep the same golden sunset mood…"
+                            className="h-24 w-full rounded-2xl border border-[#d8cbb7] bg-white/90 p-3 outline-none transition focus:border-[#a86f16] focus:ring-4 focus:ring-[#a86f16]/10"
+                          />
+                        </div>
+                      )}
+                    </div>
                     <button
                       onClick={expand}
                       disabled={expanding}
