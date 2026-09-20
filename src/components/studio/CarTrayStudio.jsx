@@ -708,7 +708,7 @@ export default function CarTrayStudio() {
       className="min-h-screen text-[#181716]"
       style={{
         backgroundImage:
-          'linear-gradient(180deg, rgba(248,245,239,.72) 0%, rgba(238,232,222,.80) 100%), url("/california-page-bg.png")',
+          'linear-gradient(90deg, rgba(10,12,15,.34) 0%, rgba(10,12,15,.12) 15%, rgba(246,239,226,.20) 31%, rgba(246,239,226,.36) 50%, rgba(246,239,226,.20) 69%, rgba(10,12,15,.12) 85%, rgba(10,12,15,.34) 100%), linear-gradient(180deg, rgba(255,250,242,.10) 0%, rgba(255,250,242,.18) 58%, rgba(20,18,16,.08) 100%), url("/california-page-bg.png")',
         backgroundSize: "cover",
         backgroundPosition: "center top",
         backgroundRepeat: "no-repeat",
