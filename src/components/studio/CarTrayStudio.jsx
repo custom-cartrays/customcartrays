@@ -1020,7 +1020,7 @@ export default function CarTrayStudio() {
                         onClick={() => setActiveTool("ai")}
                         className="rounded-2xl bg-[#171717] py-3.5 font-bold text-white shadow-[0_8px_18px_rgba(0,0,0,.16)] transition hover:-translate-y-0.5 hover:shadow-[0_10px_22px_rgba(0,0,0,.20)]"
                       >
-                        ✦ AI Expand
+                        Continue
                       </button>
                       <button
                         type="button"
