@@ -752,8 +752,8 @@ export default function CarTrayStudio() {
         </div>
       </header>
 
-      <main className="mx-auto grid min-h-[calc(100vh-76px)] w-full max-w-[1540px] gap-0 px-0 xl:grid-cols-[100px_minmax(760px,980px)_320px] xl:justify-center xl:gap-4 xl:px-4">
-        <aside className={`order-2 flex items-center gap-2 overflow-x-auto border-t border-black/10 bg-white/90 px-2 py-3 shadow-sm xl:order-none xl:my-5 xl:h-fit xl:flex-col xl:rounded-[26px] xl:border xl:border-[#d9c9ad]/70 xl:bg-[rgba(255,253,249,.92)] xl:px-2.5 xl:py-3.5 xl:shadow-[0_14px_35px_rgba(45,36,23,.08)] xl:backdrop-blur ${view === "review" ? "pointer-events-none opacity-35" : ""}`}>
+      <main className="mx-auto grid min-h-[calc(100vh-76px)] w-full max-w-[1540px] gap-0 px-0 xl:grid-cols-[minmax(760px,980px)_320px] xl:justify-center xl:gap-4 xl:px-4">
+        <aside className={`order-2 flex items-center gap-2 overflow-x-auto border-t border-black/10 bg-white/90 px-2 py-3 shadow-sm xl:hidden ${view === "review" ? "pointer-events-none opacity-35" : ""}`}>
           <button
             onClick={() => {
               setActiveTool("upload");
