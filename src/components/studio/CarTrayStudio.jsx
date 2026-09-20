@@ -798,20 +798,6 @@ export default function CarTrayStudio() {
           >
             ↷ Redo
           </button>
-          <button
-            type="button"
-            onClick={() =>
-              commitTransform({
-                ...transformRef.current,
-                x: initialTransform.x,
-                y: initialTransform.y,
-              })
-            }
-            disabled={!image || !!flattenedArtwork}
-            className="min-w-[88px] rounded-xl px-2 py-2.5 text-xs font-semibold hover:bg-[#f3eadc] disabled:opacity-25"
-          >
-            ⊙ Center
-          </button>
           <input
             ref={fileRef}
             type="file"
@@ -1014,6 +1000,21 @@ export default function CarTrayStudio() {
               <>
                 {image ? (
                   <div className="space-y-3">
+                    {!flattenedArtwork && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          commitTransform({
+                            ...transformRef.current,
+                            x: initialTransform.x,
+                            y: initialTransform.y,
+                          })
+                        }
+                        className="w-full rounded-2xl border border-[#d8cbb7] bg-white py-3.5 font-bold text-[#171717] transition hover:bg-[#faf3e8]"
+                      >
+                        Center Photo
+                      </button>
+                    )}
                     <div className="grid grid-cols-2 gap-3">
                       <button
                         type="button"
