@@ -704,7 +704,17 @@ export default function CarTrayStudio() {
         : null,
     quality = qualityFromDpi(dpi);
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(202,145,47,.12),_transparent_28%),linear-gradient(180deg,#f8f5ef_0%,#eee8de_100%)] text-[#181716]">
+    <div
+      className="min-h-screen text-[#181716]"
+      style={{
+        backgroundImage:
+          'linear-gradient(180deg, rgba(248,245,239,.72) 0%, rgba(238,232,222,.80) 100%), url("/california-page-bg.png")',
+        backgroundSize: "cover",
+        backgroundPosition: "center top",
+        backgroundRepeat: "no-repeat",
+        backgroundAttachment: "fixed",
+      }}
+    >
       <header className="sticky top-0 z-50 border-b border-[#d8c39b]/60 bg-[rgba(255,253,249,.94)] shadow-[0_8px_30px_rgba(44,34,20,.06)] backdrop-blur-xl">
         <div className="mx-auto flex h-[76px] w-full max-w-[1540px] items-center gap-5 px-4 lg:px-7">
           <button
