@@ -99,7 +99,7 @@ export default function CarTrayStudio() {
     [sourceSize, setSourceSize] = useState(null),
     [prompt, setPrompt] = useState(""),
     [expandPrompt, setExpandPrompt] = useState(""),
-    [showAdvancedExpand, setShowAdvancedExpand] = useState(false),
+    [showAdvancedExpand, setShowAdvancedExpand] = useState(true),
     [appliedExpandInstruction, setAppliedExpandInstruction] = useState(""),
     [appliedExpandPrompt, setAppliedExpandPrompt] = useState(""),
     [printPreview, setPrintPreview] = useState(""),
@@ -1020,7 +1020,7 @@ export default function CarTrayStudio() {
                         onClick={() => setActiveTool("ai")}
                         className="rounded-2xl bg-[#171717] py-3.5 font-bold text-white shadow-[0_8px_18px_rgba(0,0,0,.16)] transition hover:-translate-y-0.5 hover:shadow-[0_10px_22px_rgba(0,0,0,.20)]"
                       >
-                        Continue
+                        ✦ AI Expand
                       </button>
                       <button
                         type="button"
@@ -1088,27 +1088,18 @@ export default function CarTrayStudio() {
                       AI Expand automatically continues the original scene naturally. Your photo stays inside the 16.5″ × 7.5″ placement area, and AI fills the rest of the 16.5″ × 11″ artwork.
                     </div>
                     <div className="rounded-2xl border border-[#dacbb4]/70 bg-[#fbf8f2] p-3 shadow-inner">
-                      <button
-                        type="button"
-                        onClick={() => setShowAdvancedExpand((v) => !v)}
-                        className="flex w-full items-center justify-between rounded-xl px-1 py-1 text-left text-sm font-semibold text-[#171717]"
-                      >
-                        <span>Advanced prompt (optional)</span>
-                        <span className="text-black/45">{showAdvancedExpand ? "Hide" : "Show"}</span>
-                      </button>
-                      {showAdvancedExpand && (
-                        <div className="mt-3 space-y-2">
-                          <p className="text-xs leading-5 text-black/55">
-                            Leave this blank for the default behavior. Use it only when you want to guide the continuation in a special way.
-                          </p>
-                          <textarea
-                            value={expandPrompt}
-                            onChange={(e) => setExpandPrompt(e.target.value)}
-                            placeholder="Optional custom direction, e.g. keep the same golden sunset mood…"
-                            className="h-24 w-full rounded-2xl border border-[#d8cbb7] bg-white/90 p-3 outline-none transition focus:border-[#a86f16] focus:ring-4 focus:ring-[#a86f16]/10"
-                          />
-                        </div>
-                      )}
+                      <div className="space-y-2">
+                        <div className="text-sm font-semibold text-[#171717]">Describe your vision</div>
+                        <p className="text-xs leading-5 text-black/55">
+                          Tell AI how you want the background to continue.
+                        </p>
+                        <textarea
+                          value={expandPrompt}
+                          onChange={(e) => setExpandPrompt(e.target.value)}
+                          placeholder="Example: continue the gas station scene naturally, keep the same lighting, and avoid text or collage elements."
+                          className="h-24 w-full rounded-2xl border border-[#d8cbb7] bg-white/90 p-3 outline-none transition focus:border-[#a86f16] focus:ring-4 focus:ring-[#a86f16]/10"
+                        />
+                      </div>
                     </div>
                     <button
                       onClick={expand}
