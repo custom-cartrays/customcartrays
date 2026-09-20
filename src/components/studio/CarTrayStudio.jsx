@@ -589,6 +589,23 @@ export default function CarTrayStudio() {
         moved: false,
       };
     },
+    resizePointerDown = (e) => {
+      if (!image || flattenedArtwork || view !== "editor" || !designAreaRef.current) return;
+      e.stopPropagation();
+      e.currentTarget.setPointerCapture?.(e.pointerId);
+      const r = designAreaRef.current.getBoundingClientRect(),
+        current = transformRef.current,
+        cx = r.left + (r.width * current.x) / 100,
+        cy = r.top + (r.height * current.y) / 100,
+        distance = Math.hypot(e.clientX - cx, e.clientY - cy) || 1;
+      dragRef.current = {
+        kind: "resize",
+        pointerId: e.pointerId,
+        start: { ...current },
+        startDistance: distance,
+        moved: false,
+      };
+    },
     textPointerDown = (e, id) => {
       if (view !== "editor") return;
       e.stopPropagation();
@@ -635,6 +652,16 @@ export default function CarTrayStudio() {
         dx = ((e.clientX - d.sx) / r.width) * 100,
         dy = ((e.clientY - d.sy) / r.height) * 100;
       d.moved = true;
+      if (d.kind === "resize") {
+        const cx = r.left + (r.width * d.start.x) / 100,
+          cy = r.top + (r.height * d.start.y) / 100,
+          distance = Math.hypot(e.clientX - cx, e.clientY - cy) || 1;
+        previewTransform({
+          ...d.start,
+          scale: clamp(d.start.scale * (distance / d.startDistance), 20, 220),
+        });
+        return;
+      }
       if (d.kind === "text") {
         previewTextLayers(
           textLayersRef.current.map((layer) =>
@@ -886,13 +913,37 @@ export default function CarTrayStudio() {
                     className="absolute inset-0 w-full h-full object-fill pointer-events-none"
                   />
                 ) : image ? (
-                  <img
-                    src={originalImage || image}
-                    alt="Customer original artwork"
-                    draggable={false}
-                    className="max-w-full max-h-full object-contain absolute pointer-events-none z-10"
-                    style={artworkStyle}
-                  />
+                  <>
+                    <img
+                      src={originalImage || image}
+                      alt="Customer original artwork"
+                      draggable={false}
+                      className="max-w-full max-h-full object-contain absolute pointer-events-none z-10"
+                      style={artworkStyle}
+                    />
+                    {view === "editor" && !flattenedArtwork && (
+                      <div
+                        className="pointer-events-none absolute z-20 hidden lg:block"
+                        style={artworkStyle}
+                        aria-hidden="true"
+                      >
+                        {[
+                          ["left-0 top-0 -translate-x-1/2 -translate-y-1/2"],
+                          ["right-0 top-0 translate-x-1/2 -translate-y-1/2"],
+                          ["left-0 bottom-0 -translate-x-1/2 translate-y-1/2"],
+                          ["right-0 bottom-0 translate-x-1/2 translate-y-1/2"],
+                        ].map(([pos], index) => (
+                          <button
+                            key={index}
+                            type="button"
+                            onPointerDown={resizePointerDown}
+                            className={`pointer-events-auto absolute ${pos} h-4 w-4 rounded-full border-2 border-white bg-[#171717] shadow-[0_2px_8px_rgba(0,0,0,.35)] cursor-nwse-resize`}
+                            aria-label="Resize photo"
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </>
                 ) : (
                   <button
                     type="button"
