@@ -89,6 +89,8 @@ export default function CarTrayStudio() {
     workspaceRef = useRef(null),
     designAreaRef = useRef(null),
     dragRef = useRef(null),
+    pointersRef = useRef(new Map()),
+    gestureRef = useRef(null),
     transformRef = useRef(initialTransform),
     textLayersRef = useRef([]);
   const [image, setImage] = useState(""),
@@ -561,11 +563,29 @@ export default function CarTrayStudio() {
     pointerDown = (e) => {
       if (!image || flattenedArtwork || view !== "editor") return;
       e.currentTarget.setPointerCapture?.(e.pointerId);
+      pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+      const pts = [...pointersRef.current.values()];
+      if (pts.length >= 2) {
+        const [a, b] = pts;
+        gestureRef.current = {
+          start: { ...transformRef.current },
+          distance: Math.hypot(b.x - a.x, b.y - a.y) || 1,
+          angle: Math.atan2(b.y - a.y, b.x - a.x),
+          midX: (a.x + b.x) / 2,
+          midY: (a.y + b.y) / 2,
+          moved: false,
+        };
+        dragRef.current = null;
+        return;
+      }
+
       dragRef.current = {
         kind: "image",
+        pointerId: e.pointerId,
         sx: e.clientX,
         sy: e.clientY,
-        start: transform,
+        start: { ...transformRef.current },
         moved: false,
       };
     },
@@ -577,6 +597,7 @@ export default function CarTrayStudio() {
       dragRef.current = {
         kind: "text",
         id,
+        pointerId: e.pointerId,
         sx: e.clientX,
         sy: e.clientY,
         start: textLayersRef.current.find((layer) => layer.id === id),
@@ -584,8 +605,32 @@ export default function CarTrayStudio() {
       };
     },
     pointerMove = (e) => {
+      if (pointersRef.current.has(e.pointerId))
+        pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+      const pts = [...pointersRef.current.values()];
+      if (pts.length >= 2 && gestureRef.current && designAreaRef.current) {
+        const [a, b] = pts,
+          g = gestureRef.current,
+          r = designAreaRef.current.getBoundingClientRect(),
+          distance = Math.hypot(b.x - a.x, b.y - a.y) || 1,
+          angle = Math.atan2(b.y - a.y, b.x - a.x),
+          midX = (a.x + b.x) / 2,
+          midY = (a.y + b.y) / 2,
+          next = {
+            ...g.start,
+            scale: clamp(g.start.scale * (distance / g.distance), 20, 220),
+            rot: g.start.rot + ((angle - g.angle) * 180) / Math.PI,
+            x: clamp(g.start.x + ((midX - g.midX) / r.width) * 100, 0, 100),
+            y: clamp(g.start.y + ((midY - g.midY) / r.height) * 100, 0, 100),
+          };
+        g.moved = true;
+        previewTransform(next);
+        return;
+      }
+
       const d = dragRef.current;
-      if (!d || !designAreaRef.current) return;
+      if (!d || !designAreaRef.current || d.pointerId !== e.pointerId) return;
       const r = designAreaRef.current.getBoundingClientRect(),
         dx = ((e.clientX - d.sx) / r.width) * 100,
         dy = ((e.clientY - d.sy) / r.height) * 100;
@@ -604,16 +649,40 @@ export default function CarTrayStudio() {
         );
         return;
       }
-      const next = {
+      previewTransform({
         ...d.start,
         x: clamp(d.start.x + dx, 0, 100),
         y: clamp(d.start.y + dy, 0, 100),
-      };
-      previewTransform(next);
+      });
     },
-    pointerUp = () => {
+    pointerUp = (e) => {
+      pointersRef.current.delete(e.pointerId);
+
+      const g = gestureRef.current;
+      if (g) {
+        if (pointersRef.current.size < 2) {
+          gestureRef.current = null;
+          if (g.moved) commitTransform(transformRef.current);
+          const remaining = [...pointersRef.current.entries()][0];
+          if (remaining) {
+            const [pointerId, point] = remaining;
+            dragRef.current = {
+              kind: "image",
+              pointerId,
+              sx: point.x,
+              sy: point.y,
+              start: { ...transformRef.current },
+              moved: false,
+            };
+          } else {
+            dragRef.current = null;
+          }
+        }
+        return;
+      }
+
       const d = dragRef.current;
-      if (!d) return;
+      if (!d || d.pointerId !== e.pointerId) return;
       dragRef.current = null;
       if (!d.moved) return;
       if (d.kind === "text")
@@ -703,14 +772,6 @@ export default function CarTrayStudio() {
             <span className="text-2xl leading-none font-serif">T</span>
             Add Text
           </button>
-          <button
-            onClick={() => setActiveTool("ai")}
-            className={`min-w-[78px] rounded-2xl px-2 py-3 text-xs flex flex-col items-center gap-1.5 transition ${activeTool === "ai" ? "bg-[#171717] text-white font-bold shadow-[0_8px_18px_rgba(0,0,0,.16)]" : "hover:bg-[#f3eadc]"}`}
-          >
-            <span className="text-2xl leading-none">✦</span>
-            AI Expand
-          </button>
-
           <div className="hidden xl:block my-1 h-px w-12 bg-black/10" />
 
           <button
@@ -806,7 +867,19 @@ export default function CarTrayStudio() {
                     className="max-w-full max-h-full object-contain absolute pointer-events-none z-10"
                     style={artworkStyle}
                   />
-                ) : null}
+                ) : (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setActiveTool("upload");
+                      fileRef.current?.click();
+                    }}
+                    className="z-10 rounded-2xl bg-[#171717] px-6 py-3.5 font-bold text-white shadow-[0_10px_24px_rgba(0,0,0,.18)] transition hover:-translate-y-0.5 hover:bg-black"
+                  >
+                    Upload Photo
+                  </button>
+                )}
 
                 {view !== "review" && (
                   <TextLayersOverlay
@@ -838,73 +911,32 @@ export default function CarTrayStudio() {
             </div>
           </div>
 
-          <div className="mx-2 mb-4 flex items-center gap-2 overflow-x-auto rounded-[22px] border border-[#d8cbb7]/70 bg-[rgba(255,253,249,.90)] px-3 py-3 shadow-[0_10px_28px_rgba(45,36,23,.06)] backdrop-blur md:px-4">
-            {view === "review" ? (
-              <>
-                <button
-                  onClick={() => {
-                    setView("editor");
-                    setActiveTool(flattenedArtwork ? "ai" : "upload");
-                  }}
-                  className="min-w-[150px] rounded-2xl border border-black/10 bg-white px-4 py-3 text-left font-bold hover:bg-[#faf3e8]"
-                >
-                  ← Back to Edit
-                  <span className="mt-0.5 block text-[10px] font-normal text-black/45">
-                    Change the artwork before ordering
-                  </span>
-                </button>
-                <button
-                  onClick={add}
-                  disabled={saving}
-                  className="min-w-[170px] rounded-2xl bg-[#171717] px-4 py-3 text-left font-bold text-white shadow-sm disabled:opacity-40"
-                >
-                  {saving ? "Adding…" : "Add to Cart →"}
-                  <span className="mt-0.5 block text-[10px] font-normal text-white/60">
-                    Save this design and continue
-                  </span>
-                </button>
-              </>
-            ) : (
-              <>
-                {[
-                  ["editor", "Editor", "Edit positioning and text"],
-                  ["print", "Print File", "4950 × 3300 · artwork only"],
-                ].map(([id, label, sub]) => (
+          {view === "review" && (
+            <div className="mx-2 mb-4 flex items-center gap-2 overflow-x-auto rounded-[22px] border border-[#d8cbb7]/70 bg-[rgba(255,253,249,.90)] px-3 py-3 shadow-[0_10px_28px_rgba(45,36,23,.06)] backdrop-blur md:px-4">
               <button
-                key={id}
-                onClick={() => (id === "print" ? showPrintFile() : setView(id))}
-                disabled={
-                  id === "print" &&
-                  (expanding || !productionReady || renderingPrint)
-                }
-                className={`min-w-[150px] rounded-2xl border px-3 py-2.5 text-left transition disabled:opacity-35 ${view === id ? "border-[#a86f16] bg-[#fff7ea] shadow-[0_5px_14px_rgba(168,111,22,.10)]" : "border-black/10 bg-white/80 hover:bg-[#faf3e8]"}`}
+                onClick={() => {
+                  setView("editor");
+                  setActiveTool(flattenedArtwork ? "ai" : "upload");
+                }}
+                className="min-w-[150px] rounded-2xl border border-black/10 bg-white px-4 py-3 text-left font-bold hover:bg-[#faf3e8]"
               >
-                <span className="block text-sm font-bold">
-                  {id === "print" && !productionReady && image ? "Preparing Print…" : label}
+                ← Back to Edit
+                <span className="mt-0.5 block text-[10px] font-normal text-black/45">
+                  Change the artwork before ordering
                 </span>
-                <span className="mt-0.5 block text-[10px] text-black/45">{sub}</span>
               </button>
-                ))}
-              </>
-            )}
-
-            <div className="ml-auto hidden md:block min-w-[230px] rounded-2xl bg-[#f2eee6] px-3 py-2.5 text-xs">
-              <b className="text-black/80">
-                {flattenedArtwork
-                  ? "AI artwork ready"
-                  : sourceSize
-                    ? `${sourceSize.w} × ${sourceSize.h}px`
-                    : "Image quality"}
-              </b>
-              <span className="mt-0.5 block text-black/50">
-                {flattenedArtwork
-                  ? "AI artwork is flattened. Use “Edit Original Photo Again” to reposition."
-                  : dpi
-                    ? `${dpi} effective DPI · ${quality.label}`
-                    : "Upload an image to calculate DPI."}
-              </span>
+              <button
+                onClick={add}
+                disabled={saving}
+                className="min-w-[170px] rounded-2xl bg-[#171717] px-4 py-3 text-left font-bold text-white shadow-sm disabled:opacity-40"
+              >
+                {saving ? "Adding…" : "Add to Cart →"}
+                <span className="mt-0.5 block text-[10px] font-normal text-white/60">
+                  Save this design and continue
+                </span>
+              </button>
             </div>
-          </div>
+          )}
         </section>
 
         <aside className="order-3 bg-transparent p-3 md:p-4 xl:my-5 xl:p-0">
@@ -956,31 +988,34 @@ export default function CarTrayStudio() {
 
             {activeTool === "upload" && (
               <>
-                <button
-                  onClick={() => fileRef.current?.click()}
-                  className="w-full rounded-2xl bg-[#171717] py-3.5 font-bold text-white shadow-[0_8px_18px_rgba(0,0,0,.16)] transition hover:-translate-y-0.5 hover:shadow-[0_10px_22px_rgba(0,0,0,.20)]"
-                >
-                  {image ? "Replace Image" : "Upload Image"}
-                </button>
+                {image ? (
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setActiveTool("ai")}
+                      className="rounded-2xl bg-[#171717] py-3.5 font-bold text-white shadow-[0_8px_18px_rgba(0,0,0,.16)] transition hover:-translate-y-0.5 hover:shadow-[0_10px_22px_rgba(0,0,0,.20)]"
+                    >
+                      ✦ AI Expand
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => fileRef.current?.click()}
+                      className="rounded-2xl border border-[#d8cbb7] bg-white py-3.5 font-bold text-[#171717] transition hover:bg-[#faf3e8]"
+                    >
+                      Replace Image
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => fileRef.current?.click()}
+                    className="w-full rounded-2xl bg-[#171717] py-3.5 font-bold text-white shadow-[0_8px_18px_rgba(0,0,0,.16)] transition hover:-translate-y-0.5 hover:shadow-[0_10px_22px_rgba(0,0,0,.20)]"
+                  >
+                    Upload Image
+                  </button>
+                )}
 
                 {image && !flattenedArtwork && (
                   <div className="rounded-2xl border border-[#dacbb4]/70 bg-[#fbf8f2] p-4 space-y-4 shadow-inner">
-                    <label className="block text-sm">
-                      <span className="flex justify-between font-semibold">
-                        <span>Scale</span><b>{scale}%</b>
-                      </span>
-                      <input
-                        className="mt-2 w-full accent-[#a86f16]"
-                        type="range"
-                        min="20"
-                        max="180"
-                        value={scale}
-                        onChange={(e) =>
-                          previewTransform({ ...transform, scale: +e.target.value })
-                        }
-                        onPointerUp={() => commitTransform(transform)}
-                      />
-                    </label>
                     <label className="block text-sm">
                       <span className="flex justify-between font-semibold">
                         <span>Rotate</span><b>{rot}°</b>
@@ -999,14 +1034,19 @@ export default function CarTrayStudio() {
                     </label>
                     <div>
                       <p className="mb-2 text-xs font-bold uppercase tracking-wide text-black/40">Position</p>
-                      <div className="grid grid-cols-3 gap-2 max-w-[170px]">
-                        <span />
-                        <button className="rounded-lg border bg-white py-2 hover:bg-[#f1eadf]" onClick={() => nudge(0, -2)}>↑</button>
-                        <span />
-                        <button className="rounded-lg border bg-white py-2 hover:bg-[#f1eadf]" onClick={() => nudge(-2, 0)}>←</button>
-                        <button className="rounded-lg border bg-white py-2 hover:bg-[#f1eadf]" onClick={() => nudge(0, 2)}>↓</button>
-                        <button className="rounded-lg border bg-white py-2 hover:bg-[#f1eadf]" onClick={() => nudge(2, 0)}>→</button>
-                      </div>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          commitTransform({
+                            ...transformRef.current,
+                            x: initialTransform.x,
+                            y: initialTransform.y,
+                          })
+                        }
+                        className="w-full rounded-xl border border-black/10 bg-white py-3 font-bold hover:bg-[#f1eadf]"
+                      >
+                        Center Photo
+                      </button>
                     </div>
                   </div>
                 )}
