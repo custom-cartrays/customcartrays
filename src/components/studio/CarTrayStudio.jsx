@@ -331,13 +331,30 @@ export default function CarTrayStudio() {
     ctx.fillStyle = mx.fillStyle = "#fff";
     ctx.fillRect(0, 0, W, H);
     mx.fillRect(0, 0, W, H);
-    const img = await loadImage(originalImage || image);
+
+    const img = await loadImage(originalImage || image),
+      placementH = H * (INITIAL_PHOTO_AREA.heightIn / 11),
+      base = Math.min(W / img.naturalWidth, placementH / img.naturalHeight),
+      s = base * (scale / 100),
+      w = img.naturalWidth * s,
+      h = img.naturalHeight * s,
+      cx = (W * x) / 100,
+      cy = (H * y) / 100,
+      left = cx - w / 2,
+      top = cy - h / 2,
+      right = cx + w / 2,
+      bottom = cy + h / 2;
+
+    // Give FAL a scene-continuation guide instead of a large blank canvas.
+    // A very soft full-canvas wash carries palette/lighting, while edge bands
+    // carry only the pixels nearest the original photo boundaries so the model
+    // is less tempted to recreate the center subject as a collage.
     const coverScale = Math.max(W / img.naturalWidth, H / img.naturalHeight),
       coverW = img.naturalWidth * coverScale,
       coverH = img.naturalHeight * coverScale;
     ctx.save();
-    ctx.filter = "blur(34px)";
-    ctx.globalAlpha = 0.34;
+    ctx.filter = "blur(58px)";
+    ctx.globalAlpha = 0.22;
     ctx.drawImage(
       img,
       (W - coverW) / 2,
@@ -346,13 +363,126 @@ export default function CarTrayStudio() {
       coverH,
     );
     ctx.restore();
-    const { w, h } = drawPlaced(ctx, img, W, H);
+
+    // For normal, unrotated uploads, stretch narrow edge samples outward.
+    // This supplies perspective/color continuity without repeating the subject.
+    if (Math.abs(rot) < 1) {
+      const srcBandX = Math.max(2, Math.round(img.naturalWidth * 0.045)),
+        srcBandY = Math.max(2, Math.round(img.naturalHeight * 0.045)),
+        dl = Math.max(0, left),
+        dt = Math.max(0, top),
+        dr = Math.min(W, right),
+        db = Math.min(H, bottom);
+
+      ctx.save();
+      ctx.filter = "blur(14px)";
+      ctx.globalAlpha = 0.9;
+
+      if (dl > 0 && db > dt)
+        ctx.drawImage(
+          img,
+          0,
+          0,
+          srcBandX,
+          img.naturalHeight,
+          0,
+          dt,
+          dl + 10,
+          db - dt,
+        );
+
+      if (dr < W && db > dt)
+        ctx.drawImage(
+          img,
+          img.naturalWidth - srcBandX,
+          0,
+          srcBandX,
+          img.naturalHeight,
+          dr - 10,
+          dt,
+          W - dr + 10,
+          db - dt,
+        );
+
+      if (dt > 0 && dr > dl)
+        ctx.drawImage(
+          img,
+          0,
+          0,
+          img.naturalWidth,
+          srcBandY,
+          dl,
+          0,
+          dr - dl,
+          dt + 10,
+        );
+
+      if (db < H && dr > dl)
+        ctx.drawImage(
+          img,
+          0,
+          img.naturalHeight - srcBandY,
+          img.naturalWidth,
+          srcBandY,
+          dl,
+          db - 10,
+          dr - dl,
+          H - db + 10,
+        );
+
+      // Soft corner continuation from the nearest corner colors.
+      if (dl > 0 && dt > 0)
+        ctx.drawImage(img, 0, 0, srcBandX, srcBandY, 0, 0, dl + 8, dt + 8);
+      if (dr < W && dt > 0)
+        ctx.drawImage(
+          img,
+          img.naturalWidth - srcBandX,
+          0,
+          srcBandX,
+          srcBandY,
+          dr - 8,
+          0,
+          W - dr + 8,
+          dt + 8,
+        );
+      if (dl > 0 && db < H)
+        ctx.drawImage(
+          img,
+          0,
+          img.naturalHeight - srcBandY,
+          srcBandX,
+          srcBandY,
+          0,
+          db - 8,
+          dl + 8,
+          H - db + 8,
+        );
+      if (dr < W && db < H)
+        ctx.drawImage(
+          img,
+          img.naturalWidth - srcBandX,
+          img.naturalHeight - srcBandY,
+          srcBandX,
+          srcBandY,
+          dr - 8,
+          db - 8,
+          W - dr + 8,
+          H - db + 8,
+        );
+
+      ctx.restore();
+    }
+
+    // Draw the protected original photo last, crisp and unchanged.
+    drawPlaced(ctx, img, W, H);
+
     mx.save();
-    mx.translate((W * x) / 100, (H * y) / 100);
+    mx.translate(cx, cy);
     mx.rotate((rot * Math.PI) / 180);
     mx.fillStyle = "#000";
     mx.fillRect(-w / 2, -h / 2, w, h);
     mx.restore();
+
     return {
       imageDataUrl: c.toDataURL("image/jpeg", 0.92),
       maskDataUrl: mask.toDataURL("image/png"),
@@ -376,6 +506,7 @@ export default function CarTrayStudio() {
           "Never create a collage, comic panel, magazine layout, webpage, screenshot, grid, frame, border, tiled image, repeated image, or multiple compositions.",
           "Do not introduce new focal subjects or prominent objects unless they are unavoidable continuations of existing background structures.",
           "Match the original camera perspective, horizon, scale, lighting, colors, depth, texture, and photographic style so the transition at the mask boundary is invisible.",
+          "The masked region already contains a soft visual continuation guide sampled from the original image edges; refine that guide into a believable continuation instead of replacing it with a new composition.",
           "When uncertain, prefer simple neutral continuation of the existing background over inventing content.",
           userDirection ? `User direction: ${userDirection}` : "",
         ]
