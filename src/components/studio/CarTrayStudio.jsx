@@ -798,6 +798,20 @@ export default function CarTrayStudio() {
           >
             ↷ Redo
           </button>
+          <button
+            type="button"
+            onClick={() =>
+              commitTransform({
+                ...transformRef.current,
+                x: initialTransform.x,
+                y: initialTransform.y,
+              })
+            }
+            disabled={!image || !!flattenedArtwork}
+            className="min-w-[88px] rounded-xl px-2 py-2.5 text-xs font-semibold hover:bg-[#f3eadc] disabled:opacity-25"
+          >
+            ⊙ Center
+          </button>
           <input
             ref={fileRef}
             type="file"
@@ -1000,21 +1014,6 @@ export default function CarTrayStudio() {
               <>
                 {image ? (
                   <div className="space-y-3">
-                    {!flattenedArtwork && (
-                      <button
-                        type="button"
-                        onClick={() =>
-                          commitTransform({
-                            ...transformRef.current,
-                            x: initialTransform.x,
-                            y: initialTransform.y,
-                          })
-                        }
-                        className="w-full rounded-2xl border border-[#d8cbb7] bg-white py-3.5 font-bold text-[#171717] transition hover:bg-[#faf3e8]"
-                      >
-                        Center Photo
-                      </button>
-                    )}
                     <div className="grid grid-cols-2 gap-3">
                       <button
                         type="button"
@@ -1244,15 +1243,6 @@ export default function CarTrayStudio() {
               </div>
             )}
 
-            <div className="rounded-2xl border border-[#dacbb4]/70 bg-[#fbf8f2] p-4 text-xs leading-5 text-black/55">
-              <b className="text-black/80">Artwork geometry</b>
-              <div className="mt-2 grid grid-cols-[1fr_auto] gap-x-3 gap-y-1">
-                <span>Photo placement</span><b>16.5″ × 7.5″</b>
-                <span>Final AI / print</span><b>16.5″ × 11″</b>
-                <span>Physical tray</span><b>17″ × 11.5″</b>
-              </div>
-              <p className="mt-2 text-black/40">Tray outline never prints.</p>
-            </div>
               </>
             )}
           </div>
