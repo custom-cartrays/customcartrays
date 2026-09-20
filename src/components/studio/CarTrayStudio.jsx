@@ -999,21 +999,38 @@ export default function CarTrayStudio() {
             {activeTool === "upload" && (
               <>
                 {image ? (
-                  <div className="grid grid-cols-2 gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setActiveTool("ai")}
-                      className="rounded-2xl bg-[#171717] py-3.5 font-bold text-white shadow-[0_8px_18px_rgba(0,0,0,.16)] transition hover:-translate-y-0.5 hover:shadow-[0_10px_22px_rgba(0,0,0,.20)]"
-                    >
-                      ✦ AI Expand
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => fileRef.current?.click()}
-                      className="rounded-2xl border border-[#d8cbb7] bg-white py-3.5 font-bold text-[#171717] transition hover:bg-[#faf3e8]"
-                    >
-                      Replace Image
-                    </button>
+                  <div className="space-y-3">
+                    {!flattenedArtwork && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          commitTransform({
+                            ...transformRef.current,
+                            x: initialTransform.x,
+                            y: initialTransform.y,
+                          })
+                        }
+                        className="w-full rounded-2xl border border-[#d8cbb7] bg-white py-3.5 font-bold text-[#171717] transition hover:bg-[#faf3e8]"
+                      >
+                        Center Photo
+                      </button>
+                    )}
+                    <div className="grid grid-cols-2 gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setActiveTool("ai")}
+                        className="rounded-2xl bg-[#171717] py-3.5 font-bold text-white shadow-[0_8px_18px_rgba(0,0,0,.16)] transition hover:-translate-y-0.5 hover:shadow-[0_10px_22px_rgba(0,0,0,.20)]"
+                      >
+                        ✦ AI Expand
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => fileRef.current?.click()}
+                        className="rounded-2xl border border-[#d8cbb7] bg-white py-3.5 font-bold text-[#171717] transition hover:bg-[#faf3e8]"
+                      >
+                        Replace Image
+                      </button>
+                    </div>
                   </div>
                 ) : (
                   <button
@@ -1024,42 +1041,6 @@ export default function CarTrayStudio() {
                   </button>
                 )}
 
-                {image && !flattenedArtwork && (
-                  <div className="rounded-2xl border border-[#dacbb4]/70 bg-[#fbf8f2] p-4 space-y-4 shadow-inner">
-                    <label className="block text-sm">
-                      <span className="flex justify-between font-semibold">
-                        <span>Rotate</span><b>{rot}°</b>
-                      </span>
-                      <input
-                        className="mt-2 w-full accent-[#a86f16]"
-                        type="range"
-                        min="-180"
-                        max="180"
-                        value={rot}
-                        onChange={(e) =>
-                          previewTransform({ ...transform, rot: +e.target.value })
-                        }
-                        onPointerUp={() => commitTransform(transform)}
-                      />
-                    </label>
-                    <div>
-                      <p className="mb-2 text-xs font-bold uppercase tracking-wide text-black/40">Position</p>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          commitTransform({
-                            ...transformRef.current,
-                            x: initialTransform.x,
-                            y: initialTransform.y,
-                          })
-                        }
-                        className="w-full rounded-xl border border-black/10 bg-white py-3 font-bold hover:bg-[#f1eadf]"
-                      >
-                        Center Photo
-                      </button>
-                    </div>
-                  </div>
-                )}
 
                 {image && (
                   <button
