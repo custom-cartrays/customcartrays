@@ -99,7 +99,7 @@ export default function CarTrayStudio() {
     [sourceSize, setSourceSize] = useState(null),
     [prompt, setPrompt] = useState(""),
     [expandPrompt, setExpandPrompt] = useState(""),
-    [showAdvancedExpand, setShowAdvancedExpand] = useState(true),
+    [showAdvancedExpand, setShowAdvancedExpand] = useState(false),
     [appliedExpandInstruction, setAppliedExpandInstruction] = useState(""),
     [appliedExpandPrompt, setAppliedExpandPrompt] = useState(""),
     [printPreview, setPrintPreview] = useState(""),
@@ -763,7 +763,8 @@ export default function CarTrayStudio() {
       </header>
 
       <main className="mx-auto grid min-h-[calc(100vh-76px)] w-full max-w-[1540px] gap-0 px-0 xl:grid-cols-[minmax(760px,980px)_320px] xl:justify-center xl:gap-4 xl:px-4">
-        <aside className={`order-2 flex items-center gap-2 overflow-x-auto border-t border-black/10 bg-white/90 px-2 py-3 shadow-sm xl:hidden ${view === "review" ? "pointer-events-none opacity-35" : ""}`}>
+        {view !== "review" && (
+        <aside className="order-2 flex items-center gap-2 overflow-x-auto border-t border-black/10 bg-white/90 px-2 py-3 shadow-sm xl:hidden">
           <button
             onClick={() => {
               setActiveTool("upload");
@@ -820,6 +821,7 @@ export default function CarTrayStudio() {
             onChange={readFile}
           />
         </aside>
+        )}
 
         <section className="order-1 min-w-0 flex flex-col bg-transparent xl:order-none">
           <div className="flex items-center justify-between px-4 pt-5 text-[11px] uppercase tracking-[0.16em] text-black/40 md:px-3">
@@ -1020,7 +1022,7 @@ export default function CarTrayStudio() {
                         onClick={() => setActiveTool("ai")}
                         className="rounded-2xl bg-[#171717] py-3.5 font-bold text-white shadow-[0_8px_18px_rgba(0,0,0,.16)] transition hover:-translate-y-0.5 hover:shadow-[0_10px_22px_rgba(0,0,0,.20)]"
                       >
-                        ✦ AI Expand
+                        Continue
                       </button>
                       <button
                         type="button"
@@ -1089,14 +1091,16 @@ export default function CarTrayStudio() {
                     </div>
                     <div className="rounded-2xl border border-[#dacbb4]/70 bg-[#fbf8f2] p-3 shadow-inner">
                       <div className="space-y-2">
-                        <div className="text-sm font-semibold text-[#171717]">Describe your vision</div>
-                        <p className="text-xs leading-5 text-black/55">
-                          Tell AI how you want the background to continue.
-                        </p>
+                        <div>
+                          <p className="text-sm font-bold text-[#171717]">Describe your vision</p>
+                          <p className="mt-1 text-xs leading-5 text-black/55">
+                            Tell AI how you want the background to continue.
+                          </p>
+                        </div>
                         <textarea
                           value={expandPrompt}
                           onChange={(e) => setExpandPrompt(e.target.value)}
-                          placeholder="Example: continue the gas station scene naturally, keep the same lighting, and avoid text or collage elements."
+                          placeholder="Example: Continue the car interior naturally with the same lighting and colors."
                           className="h-24 w-full rounded-2xl border border-[#d8cbb7] bg-white/90 p-3 outline-none transition focus:border-[#a86f16] focus:ring-4 focus:ring-[#a86f16]/10"
                         />
                       </div>
