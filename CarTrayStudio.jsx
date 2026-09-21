@@ -331,13 +331,30 @@ export default function CarTrayStudio() {
     ctx.fillStyle = mx.fillStyle = "#fff";
     ctx.fillRect(0, 0, W, H);
     mx.fillRect(0, 0, W, H);
-    const img = await loadImage(originalImage || image);
+
+    const img = await loadImage(originalImage || image),
+      placementH = H * (INITIAL_PHOTO_AREA.heightIn / 11),
+      base = Math.min(W / img.naturalWidth, placementH / img.naturalHeight),
+      s = base * (scale / 100),
+      w = img.naturalWidth * s,
+      h = img.naturalHeight * s,
+      cx = (W * x) / 100,
+      cy = (H * y) / 100,
+      left = cx - w / 2,
+      top = cy - h / 2,
+      right = cx + w / 2,
+      bottom = cy + h / 2;
+
+    // Give FAL a scene-continuation guide instead of a large blank canvas.
+    // A very soft full-canvas wash carries palette/lighting, while edge bands
+    // carry only the pixels nearest the original photo boundaries so the model
+    // is less tempted to recreate the center subject as a collage.
     const coverScale = Math.max(W / img.naturalWidth, H / img.naturalHeight),
       coverW = img.naturalWidth * coverScale,
       coverH = img.naturalHeight * coverScale;
     ctx.save();
-    ctx.filter = "blur(34px)";
-    ctx.globalAlpha = 0.34;
+    ctx.filter = "blur(58px)";
+    ctx.globalAlpha = 0.22;
     ctx.drawImage(
       img,
       (W - coverW) / 2,
@@ -346,45 +363,190 @@ export default function CarTrayStudio() {
       coverH,
     );
     ctx.restore();
-    const { w, h } = drawPlaced(ctx, img, W, H);
+
+    // For normal, unrotated uploads, stretch narrow edge samples outward.
+    // This supplies perspective/color continuity without repeating the subject.
+    if (Math.abs(rot) < 1) {
+      const srcBandX = Math.max(2, Math.round(img.naturalWidth * 0.045)),
+        srcBandY = Math.max(2, Math.round(img.naturalHeight * 0.045)),
+        dl = Math.max(0, left),
+        dt = Math.max(0, top),
+        dr = Math.min(W, right),
+        db = Math.min(H, bottom);
+
+      ctx.save();
+      ctx.filter = "blur(14px)";
+      ctx.globalAlpha = 0.9;
+
+      if (dl > 0 && db > dt)
+        ctx.drawImage(
+          img,
+          0,
+          0,
+          srcBandX,
+          img.naturalHeight,
+          0,
+          dt,
+          dl + 10,
+          db - dt,
+        );
+
+      if (dr < W && db > dt)
+        ctx.drawImage(
+          img,
+          img.naturalWidth - srcBandX,
+          0,
+          srcBandX,
+          img.naturalHeight,
+          dr - 10,
+          dt,
+          W - dr + 10,
+          db - dt,
+        );
+
+      if (dt > 0 && dr > dl)
+        ctx.drawImage(
+          img,
+          0,
+          0,
+          img.naturalWidth,
+          srcBandY,
+          dl,
+          0,
+          dr - dl,
+          dt + 10,
+        );
+
+      if (db < H && dr > dl)
+        ctx.drawImage(
+          img,
+          0,
+          img.naturalHeight - srcBandY,
+          img.naturalWidth,
+          srcBandY,
+          dl,
+          db - 10,
+          dr - dl,
+          H - db + 10,
+        );
+
+      // Soft corner continuation from the nearest corner colors.
+      if (dl > 0 && dt > 0)
+        ctx.drawImage(img, 0, 0, srcBandX, srcBandY, 0, 0, dl + 8, dt + 8);
+      if (dr < W && dt > 0)
+        ctx.drawImage(
+          img,
+          img.naturalWidth - srcBandX,
+          0,
+          srcBandX,
+          srcBandY,
+          dr - 8,
+          0,
+          W - dr + 8,
+          dt + 8,
+        );
+      if (dl > 0 && db < H)
+        ctx.drawImage(
+          img,
+          0,
+          img.naturalHeight - srcBandY,
+          srcBandX,
+          srcBandY,
+          0,
+          db - 8,
+          dl + 8,
+          H - db + 8,
+        );
+      if (dr < W && db < H)
+        ctx.drawImage(
+          img,
+          img.naturalWidth - srcBandX,
+          img.naturalHeight - srcBandY,
+          srcBandX,
+          srcBandY,
+          dr - 8,
+          db - 8,
+          W - dr + 8,
+          H - db + 8,
+        );
+
+      ctx.restore();
+    }
+
+    // Draw the protected original photo last, crisp and unchanged.
+    drawPlaced(ctx, img, W, H);
+
     mx.save();
-    mx.translate((W * x) / 100, (H * y) / 100);
+    mx.translate(cx, cy);
     mx.rotate((rot * Math.PI) / 180);
     mx.fillStyle = "#000";
     mx.fillRect(-w / 2, -h / 2, w, h);
     mx.restore();
+
     return {
       imageDataUrl: c.toDataURL("image/jpeg", 0.92),
       maskDataUrl: mask.toDataURL("image/png"),
     };
   };
+  const composeStabilityOutpaintInput = async () => {
+    const W = 1500,
+      H = 1000,
+      img = await loadImage(originalImage || image),
+      placementH = H * (INITIAL_PHOTO_AREA.heightIn / 11),
+      base = Math.min(W / img.naturalWidth, placementH / img.naturalHeight),
+      s = base * (scale / 100),
+      placedW = Math.max(1, Math.round(img.naturalWidth * s)),
+      placedH = Math.max(1, Math.round(img.naturalHeight * s)),
+      cx = (W * x) / 100,
+      cy = (H * y) / 100;
+
+    if (Math.abs(rot) >= 1)
+      throw new Error(
+        "Stability Outpaint test currently supports unrotated photos only. Set rotation to 0° and try again.",
+      );
+
+    const left = Math.max(0, Math.round(cx - placedW / 2)),
+      right = Math.max(0, W - left - placedW),
+      up = Math.max(0, Math.round(cy - placedH / 2)),
+      down = Math.max(0, H - up - placedH);
+
+    const source = document.createElement("canvas");
+    source.width = placedW;
+    source.height = placedH;
+    const sctx = source.getContext("2d");
+    sctx.drawImage(img, 0, 0, placedW, placedH);
+
+    return {
+      imageDataUrl: source.toDataURL("image/png"),
+      left,
+      right,
+      up,
+      down,
+      targetWidth: W,
+      targetHeight: H,
+    };
+  };
   const expand = async () => {
-    if (!image || flattenedArtwork || expanding || !expandPrompt.trim()) return;
+    if (!image || flattenedArtwork || expanding) return;
     setExpanding(true);
     setError("");
     try {
-      const inputs = await composeExpandInputs(),
+      const inputs = await composeStabilityOutpaintInput(),
         userDirection = expandPrompt.trim(),
         expansionPrompt = [
-          "BACKGROUND EXTENSION ONLY.",
-          "The unmasked uploaded image is protected source material. Keep it visually unchanged.",
-          "Generate only inside the masked empty area surrounding the original image.",
-          "Continue the existing background naturally from the nearest visible edge. Reconstruct only environment: walls, floor, ceiling, sky, road, landscape, architecture, furniture, textures, light, shadows, reflections, atmosphere, and other background surfaces.",
-          "Do not recreate, redraw, restyle, enlarge, move, crop, mirror, duplicate, tile, or reinterpret the original image or its main subject.",
-          "ZERO NEW PEOPLE OR CHARACTERS. Do not generate humans, faces, heads, bodies, silhouettes, crowds, characters, creatures, mascots, or human-like figures in the generated area.",
-          "Do not duplicate or extend any person or character already visible in the protected image. If a person or character touches an edge, continue the background behind them instead.",
-          "ZERO TEXT OR GRAPHIC LAYOUTS. Do not generate letters, words, numbers, captions, typography, logos, signs, labels, watermarks, posters, advertisements, menus, documents, banners, UI, screenshots, webpages, comic panels, magazine layouts, frames, borders, grids, collages, or repeated images.",
-          "Do not introduce a new focal subject or prominent object. The generated area must remain supporting background only.",
-          "Match camera perspective, horizon, scale, lighting direction, exposure, color temperature, depth of field, texture, noise, shadows, reflections, and photographic or artistic style at the boundary.",
-          "The transition between protected image and generated background must be seamless and visually invisible.",
-          "When uncertain, generate a simple neutral continuation of the nearest background instead of inventing content.",
-          userDirection
-            ? `User direction (follow only when compatible with all rules above): ${userDirection}`
-            : "",
+          "Extend this exact image outward as one seamless continuation of the same scene.",
+          "Preserve the original image exactly once and keep its subject unchanged.",
+          "Continue only the surrounding environment and background.",
+          "Do not add any new people, humans, faces, bodies, silhouettes, crowds, characters, or human-like figures.",
+          "Do not duplicate or recreate any person or main subject from the source image.",
+          "Do not add text, letters, words, numbers, captions, typography, logos, signs, labels, watermarks, posters, advertisements, menus, screens, documents, banners, comic panels, frames, grids, collages, or repeated images.",
+          "Do not invent a new composition. Match the source perspective, lighting, colors, texture, depth, and photographic or illustrated style.",
+          "When uncertain, continue simple neutral background rather than inventing content.",
+          userDirection ? `User direction: ${userDirection}` : "",
         ]
           .filter(Boolean)
           .join(" "),
-        r = await fetch("/api/ai/expand", {
+        r = await fetch("/api/ai/expand-stability", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ ...inputs, prompt: expansionPrompt }),
@@ -521,7 +683,7 @@ export default function CarTrayStudio() {
                 status: flattenedArtwork ? "flattened" : "none",
                 userInstruction: appliedExpandInstruction || null,
                 effectivePrompt: appliedExpandPrompt || null,
-                provider: flattenedArtwork ? "fal-ai/flux-pro/v1/fill" : null,
+                provider: flattenedArtwork ? "stability-ai/outpaint-test" : null,
                 flattenedArtworkUrl: flattenedArtwork || null,
               },
               textLayers: textLayersRef.current,
@@ -1110,7 +1272,7 @@ export default function CarTrayStudio() {
                     </div>
                     <button
                       onClick={expand}
-                      disabled={expanding || !expandPrompt.trim()}
+                      disabled={expanding}
                       className="w-full rounded-2xl bg-[#171717] py-3.5 font-bold text-white shadow-[0_8px_18px_rgba(0,0,0,.16)] transition hover:-translate-y-0.5 hover:shadow-[0_10px_22px_rgba(0,0,0,.20)] disabled:translate-y-0 disabled:opacity-35"
                     >
                       {expanding ? "✦ Expanding…" : "✦ AI Expand Background"}
